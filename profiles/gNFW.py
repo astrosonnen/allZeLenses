@@ -2,15 +2,13 @@ from numpy import *
 from scipy.integrate import quad
 import pickle
 
-"""
-f = open('/data3/sonnen/Python/SL2S/gNFW_rs30kpc_M2d_ndinterp.dat','r')
-M2d_ndinterp = pickle.load(f)
-f.close()
+#f = open('/data3/sonnen/Python/SL2S/gNFW_rs30kpc_M2d_ndinterp.dat','r')
+#M2d_ndinterp = pickle.load(f)
+#f.close()
 
-f = open('/data3/sonnen/Python/SL2S/gNFW_rs50kpc_M3d_ndinterp.dat','r')
-M3d_ndinterp = pickle.load(f)
-f.close()
-"""
+#f = open('/data3/sonnen/Python/SL2S/gNFW_rs50kpc_M3d_ndinterp.dat','r')
+#M3d_ndinterp = pickle.load(f)
+#f.close()
 
 def rho(r,rs,beta):
     return 1/r**beta/(1 + r/rs)**(3-beta)
@@ -39,7 +37,7 @@ def lenspot(R,rs,beta):
     out = 0.*Rs
     for i in range(0,len(Rs)):
         R = Rs[i]
-        out[i] = 2*pi*quad(lambda x: Sigma(x,rs,beta)*x*log(x),0.,R)[0]
+        out[i] = 2*quad(lambda x: Sigma(x,rs,beta)*x*log(R/x),0.,R)[0]
     return out
 
 
