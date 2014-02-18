@@ -37,7 +37,7 @@ def lenspot(R,rs,beta):
     out = 0.*Rs
     for i in range(0,len(Rs)):
         R = Rs[i]
-        out[i] = 2*pi*quad(lambda x: Sigma(x,rs,beta)*x*log(x),0.,R)[0]
+        out[i] = 2*quad(lambda x: Sigma(x,rs,beta)*x*log(R/x),0.,R)[0]
     return out
 
 
