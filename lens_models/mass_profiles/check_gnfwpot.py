@@ -1,10 +1,10 @@
 import pylab
 import numpy as np
-from lensingtools import gNFW
+import gNFW_spheroid as gNFW
 from scipy.misc import derivative
 
-beta = 1.5
-rs = 30.
+beta = 1.3
+rs = 50.
 
 Nr = 51
 r = np.linspace(0.,10.,Nr)

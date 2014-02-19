@@ -37,7 +37,7 @@ def lenspot(R,rs,beta):
     out = 0.*Rs
     for i in range(0,len(Rs)):
         R = Rs[i]
-        out[i] = 2*quad(lambda x: Sigma(x,rs,beta)*x*log(R/x),0.,R)[0]
+        out[i] = 2*quad(lambda x: Sigma(x,rs,beta)*x*np.log(R/x),0.,R)[0]
     return out
 
 
@@ -53,8 +53,8 @@ def fast_M2d(R,rs,beta):
     R = np.atleast_1d(R)
     beta = np.atleast_1d(beta)
     length = max(len(beta),len(R))
-    sample = array([beta*ones(length),R/lam*ones(length)]).reshape((2,length)).T
-    M2d = M2d_ndinterp.eval(sample)*lam**(3-beta)*(R/lam)**(3.-beta)
+    sample = np.array([beta*np.ones(length),R/lam*np.ones(length)]).reshape((2,length)).T
+    M2d = M2d_grid.eval(sample)*lam**(3-beta)*(R/lam)**(3.-beta)
     return M2d
 
 def fast_M3d(r,rs,beta):
@@ -62,12 +62,21 @@ def fast_M3d(r,rs,beta):
     r = np.atleast_1d(r)
     beta = np.atleast_1d(beta)
     length = max(len(beta),len(r))
-    sample = array([beta*ones(length),r/lam*ones(length)]).reshape((2,length)).T
-    M3d = M3d_ndinterp.eval(sample)*lam**(3-beta)*(r/lam)**(3.-beta)
+    sample = np.array([beta*np.ones(length),r/lam*np.ones(length)]).reshape((2,length)).T
+    M3d = M3d_grid.eval(sample)*lam**(3-beta)*(r/lam)**(3.-beta)
     return M3d
 
+def fast_lenspot(R,rs,beta):
+    lam = rs/50.
+    R = np.atleast_1d(R)
+    beta = np.atleast_1d(beta)
+    length = max(len(beta),len(R))
+    sample = np.array([beta*np.ones(length),R/lam*np.ones(length)]).reshape((2,length)).T
+    pot = pot_grid.eval(sample)*lam**(3-beta)*(R/lam)**(3.-beta)
+    return pot
 
-def make_M2dR3mbeta_grid(Nr=100,Nb=28,Rmin=0.1,Rmax=100.):
+
+def make_M2dRbetam3_grid(Nr=100,Nb=28,Rmin=0.1,Rmax=100.):
     #this code calculates the quantity M2d(R,rs=rsgrid,beta)*R**(3-beta) on a grid of values of R between Rmin and Rmax, and values of the inner slope beta between 0.1 and 2.8.
     #the reason for the multiplication by R**(3-beta) is to make interpolation easier by having a function as flat as possible.
 
@@ -87,15 +96,15 @@ def make_M2dR3mbeta_grid(Nr=100,Nb=28,Rmin=0.1,Rmax=100.):
         for j in range(0,Nr):
             M2d_grid[i,j] = M2d(reins[j],rsgrid,betas[i])
     thing = ndinterp.ndInterp(axes,M2d_grid*R**(B-3.),order=3)
-    f = open('gNFW_rs%dkpc_M2d_ndinterp.dat'%int(rsgrid),'w')
+    f = open('gNFW_rs%d_M2d_grid.dat'%int(rsgrid),'w')
     pickle.dump(thing,f)
     f.close()
 
-def make_lenspotR3mbeta_grid(Nr=100,Nb=28,Rmin=0.1,Rmax=100.):
+def make_lenspotRbetam3_grid(Nr=30,Nb=28,Rmin=0.1,Rmax=100.):
     #this code calculates the psi(R,rs=rsgrid,beta)*R**(3-beta) on a grid of values of R between Rmin and Rmax, and values of the inner slope beta between 0.1 and 2.8.
     #the reason for the multiplication by R**(3-beta) is to make interpolation easier by having a function as flat as possible.
 
-    print 'calculating grid of enclosed projected masses...'
+    print 'calculating grid of lensing potential...'
     import ndinterp
     reins = np.logspace(np.log10(Rmin),np.log10(Rmax),Nr)
     spl_rein = splrep(reins,np.arange(Nr))
@@ -106,15 +115,12 @@ def make_lenspotR3mbeta_grid(Nr=100,Nb=28,Rmin=0.1,Rmax=100.):
     R,B = np.meshgrid(reins,betas)
     pot_grid = np.empty((Nb,Nr))
     
-    import pylab
     for i in range(0,Nb):
         print 'inner slope %4.2f'%betas[i]
         for j in range(0,Nr):
             pot_grid[i,j] = lenspot(reins[j],rsgrid,betas[i])
-        pylab.plot(reins,pot_grid[i,:])
-    pylab.show() 
     thing = ndinterp.ndInterp(axes,pot_grid*R**(B-3.),order=3)
-    f = open('gNFW_rs%dkpc_lenspot_ndinterp.dat'%int(rsgrid),'w')
+    f = open('gNFW_rs%d_lenspotRbetam3_grid.dat'%int(rsgrid),'w')
     pickle.dump(thing,f)
     f.close()
 
@@ -124,18 +130,18 @@ def make_M3d_grid():
     pass
 
 
-if not os.path.isfile('gNFW_rs%d_M2dR3mbeta_grid.dat'%int(rsgrid)):
-    make_M2dR3mbeta_grid()
+if not os.path.isfile('gNFW_rs%d_M2dRbetam3_grid.dat'%int(rsgrid)):
+    make_M2dRbetam3_grid()
 
-if not os.path.isfile('gNFW_rs%d_lenspotR3mbeta_grid.dat'%int(rsgrid)):
-    make_lenspotR3mbeta_grid()
+if not os.path.isfile('gNFW_rs%d_lenspotRbetam3_grid.dat'%int(rsgrid)):
+    make_lenspotRbetam3_grid()
 
 
-f = open('gNFW_M2dR3mbeta_grid.dat','r')
+f = open('gNFW_rs%d_M2dRbetam3_grid.dat'%rsgrid,'r')
 M2d_grid = pickle.load(f)
 f.close()
 
-f = open('gNFW_M2dR3mbeta_grid.dat','r')
+f = open('gNFW_rs%d_lenspotRbetam3_grid.dat'%rsgrid,'r')
 pot_grid = pickle.load(f)
 f.close()
 
