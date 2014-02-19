@@ -1,27 +1,25 @@
 import numpy as np
 import pickle
-from mass_profiles import gNFW_spheroid
+from mass_profiles import sersic_spheroid
 
-#pseudo-elliptical generalized-NFW profile model. 
+#pseudo-elliptical sersic profile model. 
 #The lens is elliptical in the deflection angle, NOT in projected density.
-#takes a normalization constant, a scale radius, a power-law index of the inner slope, the axis ratio of the iso-deflection contours, and the PA of the major axis with respect to the x axis.
+#takes a normalization constant, an effective radius, the axis ratio of the iso-deflection contours, and the PA of the major axis with respect to the x axis.
 
-#Conversions to 3d quantities are done by "sphericizing" the mass profile in the following way: the spherical equivalent of a pseudo-elliptical gNFW profile is defined by the spherical gNFW profile that has the same value of M2d(R)/R.
+#Conversions to 3d quantities are done by "sphericizing" the mass profile in the following way: the spherical equivalent of a pseudo-elliptical sersic profile is defined by the circular sersic profile that has the same value of M2d(R)/R.
 
+#norm is the total mass of the spherical equivalent profile.
 
-class gNFW:
+class sersic:
     
-    def __init__(self,norm=None,rs=None,beta=None,q=None,PA=None,x0=0.,y0=0.):
+    def __init__(self,norm=None,reff=None,n=4.,q=None,PA=None,x0=0.,y0=0.):
         self.norm = norm
-        self.rs = rs
-        self.beta = beta
+        self.reff = reff
+        self.n = n
         self.q = q
         self.PA = PA
         self.x0 = x0
         self.y0 = y0
-
-    def check_grids(self):
-        pass
 
 
     def kappa(self,x,y):
@@ -36,13 +34,13 @@ class gNFW:
         xl = (x[0] - self.x0)*np.cos(self.PA) + (x[1] - self.y0)*np.sin(self.PA)
         yl = -(x[0] - self.x0)*np.sin(self.PA) + (x[1] - self.y0)*np.cos(self.PA)
         r = (xl**2*self.q + yl**2/self.q)**0.5
-        return self.norm*gNFW_spheroid.fast_lenspot(r,self.rs,self.beta)
+        return self.norm*sersic_spheroid.fast_lenspot(r,self.reff,self.n)
 
     def alpha(self,x):
         xl = (x[0] - self.x0)*np.cos(self.PA) + (x[1] - self.y0)*np.sin(self.PA)
         yl = -(x[0] - self.x0)*np.sin(self.PA) + (x[1] - self.y0)*np.cos(self.PA)
         r = (xl**2*self.q + yl**2/self.q)**0.5
-        mod = self.norm*gNFW_spheroid.fast_M2d(r,self.rs,self.beta)/r/np.pi
+        mod = self.norm*sersic_spheroid.fast_M2d(r,self.reff,self.n)/r/np.pi
         alphaxl = mod*self.q/r*xl
         alphayl = mod/self.q/r*yl
         return (alphaxl*np.cos(-self.PA) + alphayl*np.sin(-self.PA),-alphaxl*np.sin(-self.PA) + alphayl*np.cos(-self.PA))
@@ -53,8 +51,7 @@ def main():
     import pylab
     import numpy as np
 
-    lens = gNFW(norm=1.,rs=50.,beta=1.3,q=0.8,PA=0.)
-    #lens = gNFW(norm=1.,rs=50.,beta=1.3,q=1.,PA=0.)
+    lens = sersic(norm=1.,reff=2.4,n=4.,q=0.8,PA=0.)
 
     xs = np.linspace(1.1,11.,100)
     dx = xs[1] - xs[0]
