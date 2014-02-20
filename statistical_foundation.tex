@@ -34,8 +34,15 @@ The likelihood of measuring the data $\boldsymbol{d}$ given the true lens parame
 \end{equation}
 Then the posterior probability distribution of the macroparameters and the cosmology is given by
 \begin{equation}
-\pr(\boldsymbol{\eta},H_0|\left\{\boldsymbol{d}\right\}) = \pr(\boldsymbol{\eta},H_0) \pr(\left\{\boldsymbol{d}\right\}|\boldsymbol{\eta},H_0) = \pr(\boldsymbol{\eta},H_0) \prod_{i=0}^N \int d\boldsymbol{\psi}_i \pr(\boldsymbol{d}_i|\boldsymbol{\psi}_i)\pr(\boldsymbol{\psi}_i|\boldsymbol{\eta}).
+\pr(\boldsymbol{\eta},H_0|\left\{\boldsymbol{d}\right\}) = \pr(\boldsymbol{\eta},H_0) \pr(\left\{\boldsymbol{d}\right\}|\boldsymbol{\eta},H_0) = \pr(\boldsymbol{\eta},H_0) \prod_{i=0}^N \int d\boldsymbol{\psi}_i \pr(\boldsymbol{d}_i|\boldsymbol{\psi}_i,H_0)\pr(\boldsymbol{\psi}_i|\boldsymbol{\eta}).
 \end{equation}
+A by-product of our analysis will then be the inference of the macroparameters describing the population of time-delay lenses.
+
+%say that we're hierarchically inferring the prior.
+%use hyperparameters instead of macroparameters.
+%write down the equivalent of doing the simple average, H0licow-like. That works by multiplying together likelihoods P(d|H_0).
+
+%the quantity constrained by the arc morphology is the radial magnification.
 
 \end{document}
 
