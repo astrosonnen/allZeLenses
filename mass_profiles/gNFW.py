@@ -45,7 +45,7 @@ def M3d(r,rs,beta):
     r = np.atleast_1d(r)
     out = 0.*r
     for i in range(0,len(r)):
-        out[i] = 4*pi*quad(lambda x: rho(x,rs,beta)*x**2,0.,r[i])[0]
+        out[i] = 4*np.pi*quad(lambda x: rho(x,rs,beta)*x**2,0.,r[i])[0]
     return out
 
 def fast_M2d(R,rs,beta):
