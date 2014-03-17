@@ -6,86 +6,98 @@ from physics.distances import Dang
 from physics import cgsconstants
 from scipy.optimize import brentq
 from scipy.misc import derivative
-import pylab
+import pymc
 
-def Sigma_cr(zd,zs,H0=70.,omegaM=0.3,omegaL=0.7):
-    #critical density in Solar masses per square arcsecond
-    S = cgsconstants.c**2/(4*np.pi*cgsconstants.G)*Dang(0.,zs,H0,omegaM,omegaL=omegaL)*Dang(0.,zd,H0,omegaM,omegaL=omegaL)/Dang(zd,zs,H0,omegaM,omegaL=omegaL)/cgsconstants.M_Sun*cgsconstants.arcsec2rad**2
-    return S
 
-db = om10.DB(catalog=os.path.expandvars("$OM10_DIR/data/qso_mock.fits"))
-db.select_random(maglim=23.3,IQ=0.75,Nlens=1000)
-mstars,logreffs = make_twocomp_lenses.assign_stars(db)
-mdms,gammas = make_twocomp_lenses.assign_halos(db,mstars,logreffs)
 
-count = 0
-lenses = []
-#defines the lenses. Calculates image positions.
-for i in range(0,db.Nlenses):
-    arcsec2kpc = cgsconstants.arcsec2rad*Dang(db.sample.ZLENS[i])/cgsconstants.kpc
-    reff = 10.**logreffs[i]/arcsec2kpc
-    S_cr = Sigma_cr(db.sample.ZLENS[i],db.sample.ZSRC[i])
-    #bulge = lens_models.sersic(norm=10.**mstars[i]/S_cr,reff=reff,n=4.)
 
-    rs = 10.*reff
-    norm = 10.**mdms[i]/gNFW.M3d(reff,rs,gammas[i])/S_cr
-    #halo = lens_models.gNFW(norm=norm,rs=rs,beta=gammas[i])
+def make_sample(Nlens=1000,maglim=23.3,IQ=0.75):
 
-    rmin_halo = rs/50.*0.1
-    rmin_bulge = 0.01*reff
-    rmax_halo = rs/50.*100.
-    rmax_bulge = 10.*reff 
-    rmin = rmin_halo
-    rmax = rmax_bulge
+    db = om10.DB(catalog=os.path.expandvars("$OM10_DIR/data/qso_mock.fits"))
+    db.select_random(maglim=23.3,IQ=0.75,Nlens=1000)
+    mstars,logreffs = make_twocomp_lenses.assign_stars(db)
+    mdms,gammas = make_twocomp_lenses.assign_halos(db,mstars,logreffs)
 
-    lens = lens_models.spherical_cow(bulge=10.**mstars[i]/S_cr,halo=norm,reff=reff,n=4.,rs=rs,beta=gammas[i])
-    #finds the radial critical curve and caustic
+    lenses = []
+    for i in range(0,db.Nlenses):
 
-    radial_invmag = lambda r: 2.*lens.kappa(r) - lens.m(r)/r**2 - 1.
+        reff = 10.**logreffs[i]
+        lens = lens_models.spherical_cow(zd=db.sample.ZLENS[i],zs=db.sample.ZSRC[i],mstar=mstars[i],mdm=mdms[i],reff_phys=reff,n=4.,rs_phys=10.*reff,gamma=gammas[i])
+        lens.source = (db.sample.XSRC[i]**2 + db.sample.YSRC[i]**2)**0.5
 
-    if radial_invmag(rmin)*radial_invmag(rmax) > 0.:
-        rcrit = rmin
-    else:
-        rcrit = brentq(radial_invmag,rmin,rmax)
+        #finds the radial critical curve and caustic
+        lens.normalize()
+        lens.get_caustic()
 
-    ycaust = -(rcrit - lens.alpha(rcrit))
+        if lens.caustic > 0.:
 
-    rsrc = (db.sample.XSRC[i]**2 + db.sample.YSRC[i]**2)**0.5
+            if lens.source > lens.caustic:
+                lens.source = np.random.rand(1)*lens.caustic
 
-    imageeq = lambda r: float(r - lens.alpha(r) - rsrc)
+            #calculate image positions
+            lens.get_images()
 
-    if rsrc > ycaust or imageeq(rcrit)*imageeq(rmax) >= 0.:
-        print 'source is not multiply imaged'
-        rsrc = float(np.random.rand(1)*ycaust)
-        count += 1
+            if lens.images is not None:
+                lenses.append(lens)
+ 
+    return lenses
 
-    if imageeq(rcrit)*imageeq(rmax) >= 0. or ycaust < 0.:
-        """
-        print 'crap',rmin_bulge,rmin_halo,reff,rs
-        bulge = lens_models.spherical_cow(bulge=10.**mstars[i]/S_cr,halo=0.,reff=reff,n=4.,rs=rs,beta=gammas[i])
-        halo = lens_models.spherical_cow(bulge=0.,halo=norm,reff=reff,n=4.,rs=rs,beta=gammas[i])
-        xs = np.linspace(-5,5,1001)
-        #pylab.plot(xs,xs - lens.alpha(xs))
-        pylab.plot(xs,xs - bulge.alpha(xs),color='r')
-        pylab.plot(xs,xs - halo.alpha(xs),color='g')
-        #pylab.scatter((xA,xB),(rsrc,rsrc),color='r')
-        pylab.axvline(-rcrit,linestyle=':',color='k')
-        pylab.axvline(rcrit,linestyle=':',color='k')
-        pylab.axvline(rmin_bulge,color='k')
-        pylab.axvline(rmin_halo,color='k')
-        pylab.show()
 
-        df
-        """
-        pass
+def fit_spherical_cow(lens,mstar_meas,N=11000,burnin=1000): #fits a spherical cow model to image position and stellar mass data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    else:
-        xA = brentq(lambda r: r - lens.alpha(r) - rsrc,rcrit,rmax)
-        xB = brentq(lambda r: r - lens.alpha(r) - rsrc,-rcrit,-rmax)
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm=lens.mdm,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
 
-        lens.sources.append(rsrc)
-        lens.images.append((xA,xB))
+    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm=-np.inf,reff_phys=lens.reff,n=lens.n,rs_phys=lens.rs,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=-np.inf,mdm=11.,reff_phys=lens.reff,n=lens.n,rs_phys=lens.rs,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
 
-        lenses.append(lens) 
+    xA,xB = lens.images
 
-    print rsrc,xA,xB
+    mstar_var = pymc.Uniform('mstar',lower=10.5,upper=12.5,value=lens.mstar)
+    gamma_var = pymc.Uniform('gamma',lower=0.2,upper=2.2,value=lens.gamma)
+
+    model_bulge.normalize()
+    model_lens.normalize()
+
+    @pymc.deterministic()
+    def mdm(mstar=mstar_var,gamma=gamma_var):
+
+        model_bulge.mstar = mstar
+        model_halo.gamma = gamma
+
+        model_bulge.normalize()
+        model_halo.normalize()
+
+        alpha_sum_dm = (xA - xB) - model_bulge.alpha(xA) + model_bulge.alpha(xB)
+        return float(np.log10(alpha_sum_dm/(model_halo.alpha(xA) - model_halo.alpha(xB))) + 11.)
+
+    @pymc.deterministic()
+    def timedelay(mstar=mstar_var,gamma=gamma_var):
+        
+        model_lens.mstar = mstar
+        model_lens.gamma = gamma
+        model_lens.mdm = mdm
+
+        model_lens.normalize()
+
+        model_lens.source = xA - model_lens.alpha(xA)
+
+        model_lens.get_time_delay()
+        return float(model_lens.timedelay)
+
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,mstar=mstar_var,gamma=gamma_var):
+        if float(mdm) != float(mdm):
+            return -1e300
+        else:
+            return -0.5*(mstar - mstar_meas[0])**2/mstar_meas[1]**2
+
+    pars = [mstar_var,gamma_var,mdm,timedelay]
+
+    M = pymc.MCMC(pars)
+    M.isample(N,burnin)
+
+    outdic = {'mstar':M.trace('mstar')[:],'mdm':M.trace('mdm')[:],'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:]}
+
+    return outdic
+
+

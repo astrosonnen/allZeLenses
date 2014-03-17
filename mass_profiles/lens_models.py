@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import sersic as sersic_profile, gNFW as gNFW_profile
 from scipy.optimize import brentq
+from physics import cgsconstants as cgs, distances
 
 #pseudo-elliptical sersic profile model. 
 #The lens is elliptical in the deflection angle, NOT in projected density.
@@ -114,29 +115,46 @@ class kappa_sheet:
 
 class spherical_cow:
     
-    def __init__(self,bulge=1.,halo=1.,reff=1.,n=4.,rs=50.,beta=1.,kappa=0.,images=[],sources=[]):
-        self.bulge = bulge
-        self.halo = halo
-        self.reff = reff
+    def __init__(self,zd=0.3,zs=2.,mstar=11.,mdm=11.,reff_phys=1.,n=4.,rs_phys=50.,gamma=1.,kext=0.,images=None,source=0.):
+        self.zd = zd
+        self.zs = zs
+        self.bulge = None
+        self.halo = None
+        self.mstar = mstar
+        self.mdm = mdm
+        self.reff_phys = reff_phys
         self.n = n
-        self.rs = rs
-        self.beta = beta
-        self.k = kappa
+        self.rs_phys = rs_phys
+        self.gamma = gamma
+        self.kext = kext
         self.caustic = None
         self.radcrit = None
+        self.source = source
+        self.images = images
+        self.timedelay = None
+
+        self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*distances.Dang(0.,self.zs)*distances.Dang(0.,self.zd)/distances.Dang(self.zd,self.zs)/cgs.M_Sun*cgs.arcsec2rad**2
+        arcsec2kpc = cgs.arcsec2rad*distances.Dang(self.zd)/cgs.kpc
+        self.rs = self.rs_phys/arcsec2kpc
+        self.reff = self.reff_phys/arcsec2kpc
+        self.Dt = distances.Dang(self.zd)*distances.Dang(self.zs)/distances.Dang(self.zd,self.zs)/cgs.c*(1. + self.zd)/cgs.c
+ 
+    def normalize(self):
+        self.halo = 10.**self.mdm/gNFW_profile.M3d(self.reff,self.rs,self.gamma)/self.S_cr
+        self.bulge = 10.**self.mstar/self.S_cr
 
     def kappa(self,r):
-        return self.halo*gNFW_profile.Sigma(r,self.rs,self.beta) + self.bulge*sersic_profile.I(r,self.n,self.reff) + self.k
+        return self.halo*gNFW_profile.Sigma(r,self.rs,self.gamma) + self.bulge*sersic_profile.I(r,self.n,self.reff) + self.kext
 
     def m(self,r):
-        return self.halo*gNFW_profile.fast_M2d(r,self.rs,self.beta)/np.pi + self.bulge*sersic_profile.fast_M2d(r,self.n,self.reff)/np.pi + self.k*r**2
+        return self.halo*gNFW_profile.fast_M2d(r,self.rs,self.gamma)/np.pi + self.bulge*sersic_profile.fast_M2d(r,self.n,self.reff)/np.pi + self.kext*r**2
 
     def lenspot(self,r):
-        return self.halo*gNFW_profile.fast_lenspot(r,self.rs,self.beta) + self.bulge*sersic_profile(r,self.n,self.reff) + 0.5*self.k*r**2
+        return self.halo*gNFW_profile.fast_lenspot(r,self.rs,self.gamma) + self.bulge*sersic_profile.fast_lenspot(r,self.n,self.reff) + 0.5*self.kext*r**2
 
     def alpha(self,x):
         r = abs(x)
-        return self.halo*gNFW_profile.fast_M2d(r,self.rs,self.beta)/x/np.pi + self.bulge*sersic_profile.fast_M2d(r,self.n,self.reff)/x/np.pi + self.k*r
+        return self.halo*gNFW_profile.fast_M2d(r,self.rs,self.gamma)/x/np.pi + self.bulge*sersic_profile.fast_M2d(r,self.n,self.reff)/x/np.pi + self.kext*r
 
     def get_caustic(self):
 
@@ -160,18 +178,21 @@ class spherical_cow:
         rmin = self.rs/500.
         rmax = 10.*self.reff
 
-        for source in sources:
-            imageeq = lambda r: r - self.alpha(r) - source
-            if imageeq(self.radcrit)*imageeq(rmax) >= 0.:
-                pass
-            elif source <= self.caustic:
-                xA = brentq(imageeq,self.radcrit,rmax)
-                xB = brentq(imageeq,-rmax,-self.radcrit)
-                self.images.append((xA,xB))
+        imageeq = lambda r: r - self.alpha(r) - self.source
+        if imageeq(self.radcrit)*imageeq(rmax) >= 0.:
+            pass
+        elif self.source <= self.caustic:
+            xA = brentq(imageeq,self.radcrit,rmax)
+            xB = brentq(imageeq,-rmax,-self.radcrit)
+            self.images = (xA,xB)
 
-            elif source > self.caustic:
-                x = brentq(imageeq,self.radcrit,rmax)
-                self.images.append((x))
-            else:
-                pass
+        elif source > self.caustic:
+            x = brentq(imageeq,self.radcrit,rmax)
+            self.images = (x)
+        else:
+            pass
+
+    def get_time_delay(self):
+        self.timedelay = -self.Dt*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + self.images[1]*self.source - self.lenspot(self.images[0]) + self.lenspot(-self.images[1]))
+
 
