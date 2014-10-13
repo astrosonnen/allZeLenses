@@ -1,8 +1,8 @@
 import numpy as np
 import pickle
-import sersic as sersic_profile, gNFW as gNFW_profile, powerlaw
+from mass_profiles import sersic as sersic_profile, gNFW as gNFW_profile, powerlaw,NFW
 from scipy.optimize import brentq
-from allZeLenses.physics import cgsconstants as cgs, distances
+from allZeLenses.tools import cgsconstants as cgs, distances
 
 #pseudo-elliptical sersic profile model. 
 #The lens is elliptical in the deflection angle, NOT in projected density.
@@ -376,5 +376,30 @@ class PIEMD:
         alpha *= np.exp(self.theta*1j)
         
         return (np.real(alpha),np.imag(alpha))
+
+
+
+class nfw:
+    def __init__(self,zd=0.3,mvir=1e11,rvir=100,rs=10,x0=0.,y0=0.):
+        self.zd = zd
+        self.mvir = mvir
+        self.rvir = rvir
+        self.rs = rs
+        
+        self.kpc2arcsec = cgs.rad2arcsec*cgs.kpc/distances.Dang(self.zd)
+        self.arcsec2kpc = self.kpc2arcsec**-1
+        self.K = self.mvir/NFW.M3d(self.rvir,self.rs)
+        self.x0 = x0
+        self.y0 = y0
+
+    def normalize(self):
+        self.K = self.mvir/NFW.M3d(self.rvir,self.rs)
+
+    def alpha(self,x):
+        r = ((x[0]-self.x0)**2 + (x[1]-self.y0)**2)**0.5
+        menc = self.K*NFW.M2d(r*self.arcsec2kpc,self.rs)*cgs.M_Sun
+        defl = 4.*cgs.G/cgs.c**2*menc/(r*self.arcsec2kpc*cgs.kpc)*cgs.rad2arcsec
+        return (defl*(x[0]-self.x0)/r,defl*(x[1]-self.y0)/r)
+
 
 

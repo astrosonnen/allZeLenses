@@ -1,15 +1,14 @@
-from allZeLenses import mass_profiles,tools
+from allZeLenses import mass_profiles,tools,lens_models
 import os,om10
 from om10 import make_twocomp_lenses
 import numpy as np
-from allZeLenses.mass_profiles import gNFW,sersic,lens_models
+from allZeLenses.mass_profiles import gNFW,sersic
 from allZeLenses.tools.distances import Dang
-from allZeLenses.tools import cgsconstants
+from allZeLenses.tools import cgsconstants,statistics
 from scipy.optimize import brentq
 from scipy.misc import derivative
 import pymc
 import pickle
-from tools.statistics import general_random
 
 
 day = 24.*3600.
@@ -51,11 +50,11 @@ def fisher_price_sample(Nlens=1000,mmu=11.5,msig=0.3,mdm_0=10.5,mdm_sig=0.1,gamm
 
     zds = np.random.rand(Nlens)*0.2+0.2
 
-    zss = general_random(lambda z: np.exp(-(np.log(z-0.4))**2),Nlens,(0.5,4.))
+    zss = statistics.general_random(lambda z: np.exp(-(np.log(z-0.4))**2),Nlens,(0.5,4.))
 
     mstars = np.random.normal(mmu,msig,Nlens)
     mstars_meas = mstars + np.random.normal(0.,mstar_err,Nlens)
-    radmag_errs = np.random.normal(0.,radmagrat_err,Nlens)
+    radmagrat_errs = np.random.normal(0.,radmagrat_err,Nlens)
 
     mdms = mdm_0 + (mstars - 11.5) + np.random.normal(0.,mdm_sig,Nlens)
     gammas = gamma_0 + np.random.normal(0.,gamma_sig,Nlens)
@@ -63,8 +62,10 @@ def fisher_price_sample(Nlens=1000,mmu=11.5,msig=0.3,mdm_0=10.5,mdm_sig=0.1,gamm
     reffs = 10.**logreffs
 
     lenses = []
+    mstar_sample = []
+    radmagrat_sample = []
     for i in range(0,Nlens):
-        lens = mp.lens_models.spherical_cow(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mdm=10.**mdms[i],reff_phys = reffs[i],rs_phys=10.*reffs[i],gamma=gammas[i])
+        lens = lens_models.spherical_cow(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mdm=10.**mdms[i],reff_phys = reffs[i],rs_phys=10.*reffs[i],gamma=gammas[i])
         lens.normalize()
         lens.get_caustic()
 
@@ -78,8 +79,10 @@ def fisher_price_sample(Nlens=1000,mmu=11.5,msig=0.3,mdm_0=10.5,mdm_sig=0.1,gamm
             df
 
         lenses.append(lens)
+        mstar_sample.append((mstars_meas[i],mstar_err))
+        radmagrat_sample.append((lens.radmag_ratio + radmagrat_errs[i],radmagrat_err))
 
     f = open(outname,'w')
-    pickle.dump((lenses,mstars_meas,radmagrat_errs),f)
+    pickle.dump((lenses,mstar_sample,radmagrat_sample),f)
     f.close()
 

@@ -3,8 +3,8 @@
 #from om10 import make_twocomp_lenses
 import numpy as np
 #from allZeLenses.mass_profiles import gNFW,sersic,lens_models
-from allZeLenses.physics.distances import Dang
-from allZeLenses.physics import cgsconstants
+from allZeLenses.tools.distances import Dang
+from allZeLenses.tools import cgsconstants
 #from scipy.optimize import brentq
 #from scipy.misc import derivative
 import pymc
@@ -356,7 +356,7 @@ def hierarchical_strong_prior(lenses,deltaT=5.,Nlens=100,N=11000,burnin=1000,toy
 
 def do_fisher_price(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11000,burnin=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
 
-    from scipy.special import gamma as gfunc,gammainc
+    from scipy.special import gamma as gfunc,gammainc,erf
 
 
     chains = []
@@ -432,7 +432,9 @@ def do_fisher_price(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11
 
             dtexp = 1./t_meas[i][1]*np.exp(-(chains[i]['timedelay']/H0*70. - t_meas[i][0])**2/(2.*t_meas[i][1]**2))
 
-            totlike += np.log((gexp*mexp*msexp*dtexp).mean())
+            norms = 0.5*(erf((mmodel - 9.)/2.**0.5/s2) - erf((mmodel - 12.5)/2.**0.5/s2))*0.5*(erf((gmodel - 0.2)/2.**0.5/s1) - erf((gmodel - 2.2)/2.**0.5/s1))
+
+            totlike += np.log((gexp*mexp*msexp*dtexp*norms).mean())
 
         return totlike
 
@@ -818,6 +820,95 @@ def hierarchical_powerlaw(lenses,mstar_meas,deltaT=5.,Nlens=100,N=11000,burnin=1
      
     M = pymc.MCMC(pars+[likeall])
     #M.use_step_method(pymc.AdaptiveMetropolis,pars,cov=diag(0.0000001*ones(len(pars))))
+    M.use_step_method(pymc.AdaptiveMetropolis,pars)
+    M.isample(N,burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('likeall')[:]
+
+    if outname is None:
+        outname = chaindir+toyname+'_hierarch_%d-%d.dat'%(lenslim[0],lenslim[1]-1)
+
+    f = open(outname,'w')
+    pickle.dump(outdic,f)
+    f.close()
+
+
+
+def do_fisher_price_dumb(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11000,burnin=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
+
+    from scipy.special import gamma as gfunc,gammainc,erf
+
+    toyname = 'fisher_price_dumb'
+
+    chains = []
+    t_meas = []
+    reffs = []
+    zd = []
+
+    if type(Nlens) == type(1):
+        lenslim = (0,Nlens)
+    else:
+        lenslim = Nlens
+        Nlens = lenslim[1] - lenslim[0]
+
+    print 'sampling lenses %d to %d'%lenslim
+
+    for i in range(lenslim[0],lenslim[1]):
+        f = open(chaindir+lensname+'_%03d.dat'%i,'r')
+        chain = pickle.load(f)
+        f.close()
+
+        for par in chain:
+            chain[par] = chain[par].flatten()[-5000:]
+
+        chain['timedelay'] /= day
+        if chain['timedelay'].mean() != chain['timedelay'].mean():
+            print i
+            df
+
+        chains.append(chain)
+
+        lens = lenses[i]
+        lens.get_time_delay()
+
+        time_meas = (lens.timedelay/day + np.random.normal(0.,deltaT,1),deltaT)
+        #time_meas = (lens.timedelay/day*(1. + np.random.normal(0.,0.05,1)),deltaT)
+
+        t_meas.append(time_meas)
+
+        zd.append(lens.zd)
+        reffs.append(np.log10(lens.reff_phys))
+
+
+    #defines the hyper-parameters
+
+    H0 = pymc.Uniform('H0',lower=60,upper=80.,value=70.)
+
+    pars = [H0]
+
+
+    @pymc.deterministic(name='likeall')
+    def likeall(H0=H0):
+
+        totlike = 0.
+
+        for i in range(0,Nlens):
+
+            dtexp = 1./t_meas[i][1]*np.exp(-(chains[i]['timedelay']/H0*70. - t_meas[i][0])**2/(2.*t_meas[i][1]**2))
+
+            totlike += np.log((dtexp).mean())
+
+        return totlike
+
+     
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,H0=H0):
+        return likeall
+     
+    M = pymc.MCMC(pars+[likeall])
     M.use_step_method(pymc.AdaptiveMetropolis,pars)
     M.isample(N,burnin)
 
