@@ -115,10 +115,11 @@ class kappa_sheet:
 
 class sps:
     
-    def __init__(self,zd=0.3,zs=2.,rein=1.,gamma=2.,kext=0.,images=[],source=0.):
+    def __init__(self,zd=0.3,zs=2.,rein=1.,m5=None,gamma=2.,kext=0.,images=[],source=0.):
         self.zd = zd
         self.zs = zs
         self.rein = rein
+        self.m5 = m5
         self.gamma = gamma
         self.kext = kext
         #self.bq12 = 4.*np.pi*(sigmav/cgs.c*1e5)**2*cgs.rad2arcsec
@@ -131,11 +132,14 @@ class sps:
         self.radmag_ratio = None
 
         self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*distances.Dang(0.,self.zs)*distances.Dang(0.,self.zd)/distances.Dang(self.zd,self.zs)/cgs.M_Sun*cgs.arcsec2rad**2
-        arcsec2kpc = cgs.arcsec2rad*distances.Dang(self.zd)/cgs.kpc
+        self.arcsec2kpc = cgs.arcsec2rad*distances.Dang(self.zd)/cgs.kpc
         self.Dt = distances.Dang(self.zd)*distances.Dang(self.zs)/distances.Dang(self.zd,self.zs)/cgs.c*(1. + self.zd)/cgs.c
  
     def normalize(self):
         self.norm = self.rein/powerlaw.M2d(self.rein,self.gamma)/self.S_cr
+
+    def normalize_m5(self):
+        self.norm = self.m5/powerlaw.M2d(5./self.arcsec2kpc,self.gamma)/self.S_cr
 
     def kappa(self,x):
         return self.norm*powerlaw.Sigma(abs(x),self.gamma)
@@ -191,13 +195,13 @@ class sps:
 
 class spherical_cow:
     
-    def __init__(self,zd=0.3,zs=2.,mstar=1e11,mdm=1e11,reff_phys=1.,n=4.,rs_phys=50.,gamma=1.,kext=0.,images=[],source=0.):
+    def __init__(self,zd=0.3,zs=2.,mstar=1e11,mdm5=1e11,reff_phys=1.,n=4.,rs_phys=50.,gamma=1.,kext=0.,images=[],source=0.):
         self.zd = zd
         self.zs = zs
         self.bulge = None
         self.halo = None
         self.mstar = mstar
-        self.mdm = mdm
+        self.mdm5 = mdm5
         self.reff_phys = reff_phys
         self.n = n
         self.rs_phys = rs_phys
@@ -210,6 +214,9 @@ class spherical_cow:
         self.timedelay = None
         self.grids = None
         self.radmag_ratio = None
+        self.dyndic = None
+        self.rein = None
+        self.veldisp = None
 
         self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*distances.Dang(0.,self.zs)*distances.Dang(0.,self.zd)/distances.Dang(self.zd,self.zs)/cgs.M_Sun*cgs.arcsec2rad**2
         arcsec2kpc = cgs.arcsec2rad*distances.Dang(self.zd)/cgs.kpc
@@ -218,7 +225,7 @@ class spherical_cow:
         self.Dt = distances.Dang(self.zd)*distances.Dang(self.zs)/distances.Dang(self.zd,self.zs)/cgs.c*(1. + self.zd)/cgs.c
  
     def normalize(self):
-        self.halo = self.mdm/gNFW_profile.M3d(self.reff,self.rs,self.gamma)/self.S_cr
+        self.halo = self.mdm5/gNFW_profile.fast_M2d(5.,self.rs,self.gamma)/self.S_cr
         self.bulge = self.mstar/self.S_cr
 
     def kappa(self,x):
@@ -336,6 +343,67 @@ class PIEMD_Keeton:
         return (alphaxl*np.cos(-self.PA) + alphayl*np.sin(-self.PA),-alphaxl*np.sin(-self.PA) + alphayl*np.cos(-self.PA))
         
 
+class PIEMD_glee:
+    def __init__(self,E0=1.,x0=0.,y0=0.,w=1.,q=1.,PA=0.,scale=False):
+        self.w = w
+        if scale:
+            self.E0 = E0/(np.sqrt(E0**2 + w**2) - w)
+        else:
+            self.E0 = E0
+
+        #self.rc = rc
+        self.q = q
+        self.rein = None
+        self.x0 = x0
+        self.y0 = y0
+        self.PA = PA
+        self.eps = (1.-self.q)/(1+self.q)
+        self.omega = None
+        self.amp = None
+        #self.update()
+        self.theta = self.PA/180.*np.pi
+        
+
+    def update(self):
+        self.eps = (1 - self.q)/(1 + self.q)
+        self.omega = self.rc/np.sqrt((1 + self.eps)*(1-self.eps))
+        self.amp = 1.
+        self.amp = self.rein**2/self.m(self.rein)
+        self.E0 = 2*self.amp/np.sqrt((1+self.eps)*(1-self.eps))
+        self.theta = self.PA/180.*np.pi
+
+    def kappa(self,x):
+        req2 = (x[0]-self.x0)**2/(1+self.eps)**2 + (x[1]-self.y0)**2/(1-self.eps)**2
+        return self.E0/2./np.sqrt(self.w**2 + req2)
+
+    def m(self,r):
+        return 2*self.amp*self.rc*((1. + (r/self.rc)**2)**0.5 - 1.)
+
+    def alpha(self,x):
+        x1,x2 = x[0] - self.x0,x[1] - self.y0
+        x1p = np.cos(-self.theta)*x1 - np.sin(-self.theta)*x2
+        x2p = np.sin(-self.theta)*x1 + np.cos(-self.theta)*x2
+
+        alpha = (1 - self.eps**2)*self.E0/2j/np.sqrt(self.eps)*np.log(((1-self.eps)/(1+self.eps)*x1p - (1+self.eps)/(1-self.eps)*1j*x2p + 2j*np.sqrt(self.eps)*np.sqrt(self.w**2 + x1p**2/(1+self.eps)**2 + x2p**2/(1-self.eps)**2))/(x1p - x2p*1j + 2j*self.w*np.sqrt(self.eps)))
+        alpha *= np.exp(self.theta*1j)
+        
+        return (np.real(alpha),np.imag(alpha))
+
+    def lenspot(self,x):
+        x1,x2 = x[0] - self.x0,x[1] - self.y0
+        x1p = np.cos(-self.theta)*x1 - np.sin(-self.theta)*x2
+        x2p = np.sin(-self.theta)*x1 + np.cos(-self.theta)*x2
+        cosphi = x1p/(x1p**2 + x2p**2)**0.5
+        sinphi = x2p/(x1p**2 + x2p**2)**0.5
+
+        req2 = x1p**2/(1+self.eps)**2 + x2p**2/(1-self.eps)**2
+        eta = -0.5*np.arcsinh(2.*self.eps**0.5/(1.-self.eps)*sinphi) + 0.5*1j*np.arcsin(2.*self.eps**0.5/(1.+self.eps)*cosphi)
+        zeta = 0.5*np.log((req2**0.5 + (req2 + self.w**2)**0.5)/self.w)
+
+        Kstar = np.sinh(2.*eta)*np.log(np.cosh(eta)**2/(np.cosh(eta+zeta)*np.cosh(eta-zeta))) + np.sinh(2.*zeta)*np.log(np.cosh(eta+zeta)/np.cosh(eta-zeta))
+
+        return 0.5*self.E0*self.w*(1.-self.eps**2)/req2**0.5/self.eps**0.5*np.imag((x1p - 1j*x2p)*Kstar)
+
 
 
 class PIEMD:
@@ -402,4 +470,19 @@ class nfw:
         return (defl*(x[0]-self.x0)/r,defl*(x[1]-self.y0)/r)
 
 
+class shear:
+    def __init__(self,mag=0.,PA=0.,x0=0.,y0=0.):
+        self.mag = mag
+        self.PA = PA
+        self.theta = self.PA/180.*np.pi
+        self.gamma1 = self.mag*np.cos(2.*self.theta)
+        self.gamma2 = self.mag*np.sin(2.*self.theta)
+        self.x0 = x0
+        self.y0 = y0
+
+    def alpha(self,x):
+        return (self.gamma1*(x[0]-self.x0) + self.gamma2*(x[1]-self.y0),-self.gamma1*(x[1]-self.y0) + self.gamma2*(x[0]-self.x0))
+
+    def lenspot(self,x):
+        return 0.5*self.gamma1*((x[0]-self.x0)**2 - (x[1]-self.y0)**2) + self.gamma2*(x[0]-self.x0)*(x[1]-self.y0)
 

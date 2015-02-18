@@ -12,7 +12,7 @@ def M2d(R,gamma):
     return 2*np.pi*np.sqrt(np.pi)/(3.-gamma)*gfunc((gamma-1.)/2.)/gfunc(gamma/2.)*R**(3-gamma)
 
 def M3d(r,gamma):
-    return 4*pi/(3.-gamma)*r**(3-gamma)
+    return 4*np.pi/(3.-gamma)*r**(3-gamma)
 
 def lenspot(r,gamma):
     #m = 2*np.sqrt(pi)/(3.-gamma)*gfunc((gamma-1.)/2.)/gfunc(gamma/2.)*R**(3-gamma)

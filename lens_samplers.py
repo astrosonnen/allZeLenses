@@ -18,9 +18,9 @@ day = 24.*3600.
 def fit_spherical_cow_exactrein(lens,mstar_meas,radmagrat_meas,N=11000,burnin=1000,gammaup=2.2,thin=1): #fits a spherical cow model to image position, stellar mass and ratio of radial magnification data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 #image positions are assumed to be known exactly.
 
-    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm=lens.mdm,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
-    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=1.,mdm=0.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=0.,images=lens.images,source=lens.source)
-    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=0.,mdm=1.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm5=lens.mdm5,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=1.,mdm5=0.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=0.,images=lens.images,source=lens.source)
+    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=0.,mdm5=1.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
 
     model_lens.normalize()
     model_bulge.normalize()
@@ -30,14 +30,14 @@ def fit_spherical_cow_exactrein(lens,mstar_meas,radmagrat_meas,N=11000,burnin=10
 
     mstar_max = (xA - xB)/(model_bulge.alpha(xA) - model_bulge.alpha(xB))
 
-    mdm_var = pymc.Uniform('mdm',lower=9.,upper=12.5,value=np.log10(lens.mdm))
+    mdm5_var = pymc.Uniform('mdm5',lower=10.,upper=12.,value=np.log10(lens.mdm5))
     gamma_var = pymc.Uniform('gamma',lower=0.2,upper=gammaup,value=lens.gamma)
 
 
     @pymc.deterministic()
-    def mstar(mdm=mdm_var,gamma=gamma_var):
+    def mstar(mdm5=mdm5_var,gamma=gamma_var):
 
-        model_halo.mdm = 10.**mdm
+        model_halo.mdm5 = 10.**mdm5
         model_halo.gamma = gamma
         model_halo.normalize()
 
@@ -46,11 +46,11 @@ def fit_spherical_cow_exactrein(lens,mstar_meas,radmagrat_meas,N=11000,burnin=10
         return mmstar
 
     @pymc.deterministic()
-    def timedelay(mdm=mdm_var,gamma=gamma_var):
+    def timedelay(mdm5=mdm5_var,gamma=gamma_var):
 
         model_lens.mstar = float(mstar)
         model_lens.gamma = gamma
-        model_lens.mdm = 10.**mdm
+        model_lens.mdm5 = 10.**mdm5
 
         model_lens.normalize()
 
@@ -61,11 +61,11 @@ def fit_spherical_cow_exactrein(lens,mstar_meas,radmagrat_meas,N=11000,burnin=10
 
 
     @pymc.deterministic()
-    def radmag_ratio(mdm=mdm_var,gamma=gamma_var):
+    def radmag_ratio(mdm5=mdm5_var,gamma=gamma_var):
 
         model_lens.mstar = float(mstar)
         model_lens.gamma = gamma
-        model_lens.mdm = 10.**mdm
+        model_lens.mdm5 = 10.**mdm5
 
         model_lens.normalize()
 
@@ -76,10 +76,10 @@ def fit_spherical_cow_exactrein(lens,mstar_meas,radmagrat_meas,N=11000,burnin=10
 
 
     @pymc.deterministic()
-    def like(mdm=mdm_var,gamma=gamma_var):
+    def like(mdm5=mdm5_var,gamma=gamma_var):
         model_lens.mstar = float(mstar)
         model_lens.gamma = gamma
-        model_lens.mdm = 10.**mdm
+        model_lens.mdm5 = 10.**mdm5
 
         model_lens.normalize()
 
@@ -90,15 +90,15 @@ def fit_spherical_cow_exactrein(lens,mstar_meas,radmagrat_meas,N=11000,burnin=10
 
         
     @pymc.stochastic(observed=True,name='logp')
-    def logp(value=0.,mdm=mdm_var,gamma=gamma_var):
+    def logp(value=0.,mdm5=mdm5_var,gamma=gamma_var):
         return like
 
-    pars = [mdm_var,gamma_var,mstar,timedelay,like,radmag_ratio]
+    pars = [mdm5_var,gamma_var,mstar,timedelay,like,radmag_ratio]
 
     M = pymc.MCMC(pars)
     M.isample(N,burnin,thin=thin)
 
-    outdic = {'mstar':np.log10(M.trace('mstar')[:]),'mdm':M.trace('mdm')[:],'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:],'logp':M.trace('like')[:],'radmag_ratio':M.trace('radmag_ratio')[:]}
+    outdic = {'mstar':np.log10(M.trace('mstar')[:]),'mdm5':M.trace('mdm5')[:],'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:],'logp':M.trace('like')[:],'radmag_ratio':M.trace('radmag_ratio')[:]}
 
     return outdic
 
@@ -279,12 +279,11 @@ def slow_fit_spherical_cow(lens,mstar_meas,N=11000,burnin=1000,gammaup=2.2,imerr
     return outdic
 
 
+def fit_spherical_cow(lens,mstar_meas,radmagrat_meas,N=11000,burnin=1000,gammaup=1.8,imerr=0.1,thin=1): #fits a spherical cow model to image position and stellar mass data. Does NOT fit the time-delay (that's done later in the hierarchical inference step). Sampling is not efficient and gives biased results.
 
-def fit_spherical_cow(lens,mstar_meas,N=11000,burnin=1000,gammaup=2.2,imerr=0.1,thin=1): #fits a spherical cow model to image position and stellar mass data. Does NOT fit the time-delay (that's done later in the hierarchical inference step). Sampling is not efficient and gives biased results.
-
-    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm=lens.mdm,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
-    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=1.,mdm=0.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
-    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=0.,mdm=1.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm5=lens.mdm5,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=1.,mdm5=0.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=0.,mdm5=1.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
 
     model_lens.normalize()
     model_bulge.normalize()
@@ -301,33 +300,32 @@ def fit_spherical_cow(lens,mstar_meas,N=11000,burnin=1000,gammaup=2.2,imerr=0.1,
 
     mstar_var = pymc.Uniform('lmstar',lower=min(lens.mstar,mstar_meas[0]) - 5*mstar_meas[1],upper=np.log10(mstar_max)+0.1,value=np.log10(lens.mstar))
     gamma_var = pymc.Uniform('gamma',lower=0.2,upper=gammaup,value=lens.gamma)
-    mdm_var = pymc.Uniform('mdm',lower=min(9.5,np.log10(lens.mdm)-0.2),upper=np.log10(mdm_max)+0.1,value=np.log10(lens.mdm))
-    s_var = pymc.Uniform('s',lower=0.,upper=2.*lens.caustic,value=lens.source)
+    mdm5_var = pymc.Uniform('mdm5',lower=min(9.5,np.log10(lens.mdm5)-0.2),upper=np.log10(mdm_max)+0.1,value=np.log10(lens.mdm5))
+    #s_var = pymc.Uniform('s',lower=0.,upper=2.*lens.caustic,value=lens.source)
+    s_max = 2.*lens.caustic
+    s_var = pymc.Uniform('s',lower=0.,upper=1.,value=(lens.source/s_max)**2)
 
     @pymc.deterministic()
-    def images(mstar=mstar_var,gamma=gamma_var,mdm=mdm_var,s=s_var):
+    def images(mstar=mstar_var,gamma=gamma_var,mdm5=mdm5_var,s=s_var):
 
-        model_lens.source = s
+        model_lens.source = s**0.5*s_max
         model_lens.mstar = 10.**mstar
         model_lens.gamma = gamma
-        model_lens.mdm = 10.**mdm
+        model_lens.mdm5 = 10.**mdm5
 
         model_lens.normalize()
 
         model_lens.fast_images()
-        if len(model_lens.images) < 2:
-            return 0.
-        else:
-            return model_lens.images
+        return model_lens.images
 
 
     @pymc.deterministic()
-    def timedelay(mstar=mstar_var,gamma=gamma_var,mdm=mdm_var,s=s_var):
+    def timedelay(mstar=mstar_var,gamma=gamma_var,mdm5=mdm5_var,s=s_var):
 
-        model_lens.source = s
+        model_lens.source = s**0.5*s_max
         model_lens.mstar = 10.**mstar
         model_lens.gamma = gamma
-        model_lens.mdm = 10.**mdm
+        model_lens.mdm5 = 10.**mdm5
 
         model_lens.normalize()
 
@@ -340,35 +338,165 @@ def fit_spherical_cow(lens,mstar_meas,N=11000,burnin=1000,gammaup=2.2,imerr=0.1,
 
 
     @pymc.deterministic()
-    def like(mstar=mstar_var,gamma=gamma_var,mdm=mdm_var,s=s_var):
+    def radmag_ratio(mstar=mstar_var,mdm5=mdm5_var,gamma=gamma_var,s=s_var):
+
+        model_lens.s = s**0.5*s_max
         model_lens.mstar = 10.**mstar
         model_lens.gamma = gamma
-        model_lens.mdm = 10.**mdm
-        model_lens.source = s
+        model_lens.mdm5 = 10.**mdm5
 
         model_lens.normalize()
 
         model_lens.fast_images()
 
-        if len(model_lens.images) < 2:
+        if len(model_lens.images)<2:
+            return 0.
+        else:
+            model_lens.get_radmag_ratio()
+            return float(model_lens.radmag_ratio)
+
+
+    @pymc.deterministic()
+    def like(mstar=mstar_var,gamma=gamma_var,mdm5=mdm5_var,s=s_var):
+
+        model_lens.mstar = 10.**mstar
+        model_lens.gamma = gamma
+        model_lens.mdm5 = 10.**mdm5
+        model_lens.source = s**0.5*s_max
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+
+        if len(model_lens.images)<2:
             return -1e300
         else:
-            imA = model_lens.images[0]
-            imB = model_lens.images[1]
+            imA = float(model_lens.images[0])
+            imB = float(model_lens.images[1])
             loglike = -0.5*(imA - xA)**2/imerr**2 - 0.5*(imB - xB)**2/imerr**2
-            return loglike -0.5*(mstar - mstar_meas[0])**2/mstar_meas[1]**2
+            return loglike -0.5*(mstar - mstar_meas[0])**2/mstar_meas[1]**2 - 0.5*(float(radmag_ratio) - radmagrat_meas[0])**2/radmagrat_meas[1]**2
+
 
         
     @pymc.stochastic(observed=True,name='logp')
-    def logp(value=0.,mstar=mstar_var,gamma=gamma_var,mdm=mdm_var,s=s_var):
+    def logp(value=0.,mstar=mstar_var,gamma=gamma_var,mdm5=mdm5_var,s=s_var):
         return like
 
-    pars = [mstar_var,gamma_var,mdm_var,s_var,timedelay,like,images]
+    pars = [mstar_var,gamma_var,mdm5_var,s_var,timedelay,like,images]
 
     M = pymc.MCMC(pars)
     M.isample(N,burnin,thin=thin)
 
-    outdic = {'mstar':M.trace('lmstar')[:],'mdm':M.trace('mdm')[:],'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:],'logp':M.trace('like')[:],'source':M.trace('s')[:],'images':M.trace('images')[:]}
+    outdic = {'mstar':M.trace('lmstar')[:],'mdm5':M.trace('mdm5')[:],'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:],'logp':M.trace('like')[:],'source':M.trace('s')[:]**0.5*s_max,'images':M.trace('images')[:]}
+
+    return outdic
+
+
+
+def emcee_spherical_cow(lens,mstar_meas,radmagrat_meas,N=11000,burnin=1000,nwalkers=32,gammaup=1.8,imerr=0.1): #fits a spherical cow model to image position and stellar mass data. Does NOT fit the time-delay (that's done later in the hierarchical inference step). Sampling is not efficient and gives biased results.
+
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm5=lens.mdm5,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=1.,mdm5=0.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=0.,mdm5=1.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+
+    model_lens.normalize()
+    model_bulge.normalize()
+    model_halo.normalize()
+
+    xA,xB = lens.images
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr)
+
+
+    mstar_max = (xA - xB)/(model_bulge.alpha(xA) - model_bulge.alpha(xB))
+    mdm_max = (xA - xB)/(model_halo.alpha(xA) - model_halo.alpha(xB))
+
+    s_max = 2.*lens.caustic
+
+
+    def timedelay(mstar,gamma,mdm5,s):
+
+        model_lens.source = s**0.5*s_max
+        model_lens.mstar = 10.**mstar
+        model_lens.gamma = gamma
+        model_lens.mdm5 = 10.**mdm5
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+        if len(model_lens.images) < 2:
+            return 0.
+        else:
+            model_lens.get_time_delay()
+            return float(model_lens.timedelay)
+
+
+    def radmag_ratio(mstar,gamma,mdm5,s):
+
+        model_lens.s = s**0.5*s_max
+        model_lens.mstar = 10.**mstar
+        model_lens.gamma = gamma
+        model_lens.mdm5 = 10.**mdm5
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+
+        if len(model_lens.images)<2:
+            return 0.
+        else:
+            model_lens.get_radmag_ratio()
+            return float(model_lens.radmag_ratio)
+
+
+    def logp(pars):
+
+        mstar,gamma,mdm5,s = pars
+        model_lens.mstar = 10.**mstar
+        model_lens.gamma = gamma
+        model_lens.mdm5 = 10.**mdm5
+        model_lens.source = s**0.5*s_max
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+
+        if len(model_lens.images)<2 or mdm5<10. or mstar<10.5 or gamma>1.8 or gamma<0.2 or s>1. or s<0.:
+            return -1e300
+        else:
+            imA = float(model_lens.images[0])
+            imB = float(model_lens.images[1])
+            loglike = -0.5*(imA - xA)**2/imerr**2 - 0.5*(imB - xB)**2/imerr**2
+            return loglike -0.5*(mstar - mstar_meas[0])**2/mstar_meas[1]**2 - 0.5*(radmag_ratio(mstar,gamma,mdm5,s) - radmagrat_meas[0])**2/radmagrat_meas[1]**2
+
+
+    sampler = emcee.EnsembleSampler(nwalkers,4,logp)
+
+    start = []
+    for i in range(nwalkers):
+        mstar0 = np.log10(lens.mstar) + 0.03*np.random.rand(1)
+        gamma0 = lens.gamma + 0.03*np.random.rand(1)
+        mdm0 = np.log10(lens.mdm5) + 0.03*np.random.rand(1)
+        s0 = (lens.source/s_max)**2 + 0.03*np.random.rand(1)
+
+        start.append(np.array((mstar0,gamma0,mdm0,s0)).reshape(4,))
+
+    print 'sampling...'
+    sampler.run_mcmc(start,N)
+
+    samples = sampler.chain[:,burnin:,:].reshape((-1,4))
+
+    ntot = nwalkers*(N-burnin)
+    #now goes through the chain and recalculates stellar masses and time delays...
+    mstars = np.empty(ntot)
+    timedelays = 0.*mstars
+
+    print 'recalculating stuff...'
+    for i in range(0,ntot):
+        timedelays[i] = timedelay(samples[i,0],samples[i,1],samples[i,2],samples[i,3])        
+
+    outdic = {'mstar':samples[:,0],'mdm5':samples[:,2],'gamma':samples[:,1],'timedelay':timedelays,'source':samples[:,3]}
 
     return outdic
 
@@ -379,6 +507,8 @@ def fit_sps_exactrein(lens,radmagrat_meas,N=11000,burnin=1000,gammaup=2.8):
 
     model_lens = lens_models.sps(zd=lens.zd,zs=lens.zs,rein=1.,gamma=2.,kext=lens.kext,images=lens.images)
     model_lens.normalize()
+
+    r5kpc = 5.*cgsconstants.kpc/Dang(lens.zd)*cgsconstants.rad2arcsec
 
     xA,xB = lens.images
 
@@ -415,6 +545,17 @@ def fit_sps_exactrein(lens,radmagrat_meas,N=11000,burnin=1000,gammaup=2.8):
         model_lens.get_radmag_ratio()
         return float(model_lens.radmag_ratio)
 
+    @pymc.deterministic()
+    def m5kpc(gamma=gamma_var):
+
+        model_lens.gamma = gamma
+
+        norm = (xA - xB)/(model_lens.alpha(xA) - model_lens.alpha(xB))
+        model_lens.norm *= norm
+
+        menc5 = model_lens.m(r5kpc)
+        return menc5*model_lens.S_cr*np.pi
+
 
     @pymc.deterministic()
     def like(gamma=gamma_var):#,kext=kext_var):
@@ -422,7 +563,6 @@ def fit_sps_exactrein(lens,radmagrat_meas,N=11000,burnin=1000,gammaup=2.8):
         #model_lens.kext = kext
 
         model_lens.normalize()
-
         return -0.5*(float(radmag_ratio) - radmagrat_meas[0])**2/radmagrat_meas[1]**2
 
         
@@ -430,12 +570,12 @@ def fit_sps_exactrein(lens,radmagrat_meas,N=11000,burnin=1000,gammaup=2.8):
     def logp(value=0.,gamma=gamma_var):#,kext=kext_var):
         return like
 
-    pars = [gamma_var,timedelay,like,radmag_ratio]#,kext_var]
+    pars = [gamma_var,timedelay,like,radmag_ratio,m5kpc]#,kext_var]
 
     M = pymc.MCMC(pars)
     M.isample(N,burnin)
 
-    outdic = {'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:],'logp':M.trace('like')[:],'radmag_ratio':M.trace('radmag_ratio')[:]}#,'kext':M.trace('kext')[:]}
+    outdic = {'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:],'logp':M.trace('like')[:],'radmag_ratio':M.trace('radmag_ratio')[:],'m5kpc':np.log10(M.trace('m5kpc')[:])}#,'kext':M.trace('kext')[:]}
 
     return outdic
 

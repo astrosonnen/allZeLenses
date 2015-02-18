@@ -46,7 +46,7 @@ def om10_to_spherical_cows(Nlens=1000,maglim=23.3,IQ=0.75):
     return lenses
 
 
-def fisher_price_sample(Nlens=1000,mmu=11.5,msig=0.3,mdm_0=10.5,mdm_sig=0.1,gamma_0=1.5,gamma_sig=0.1,logreff_0=0.46,mstar_err=0.1,radmagrat_err=0.015,outname='fisher_price_mock_sample.dat'):
+def fisher_price_sample(Nlens=1000,mmu=11.5,msig=0.3,mdm5_0=10.8,mdm5_sig=0.1,mdm_mstar=0.,gamma_0=1.0,gamma_sig=0.1,logreff_0=0.46,mstar_err=0.1,radmagrat_err=0.015,outname='fisher_price_mock_sample.dat'):
 
     zds = np.random.rand(Nlens)*0.2+0.2
 
@@ -56,7 +56,7 @@ def fisher_price_sample(Nlens=1000,mmu=11.5,msig=0.3,mdm_0=10.5,mdm_sig=0.1,gamm
     mstars_meas = mstars + np.random.normal(0.,mstar_err,Nlens)
     radmagrat_errs = np.random.normal(0.,radmagrat_err,Nlens)
 
-    mdms = mdm_0 + (mstars - 11.5) + np.random.normal(0.,mdm_sig,Nlens)
+    mdms = mdm5_0 + mdm_mstar*(mstars - 11.5) + np.random.normal(0.,mdm5_sig,Nlens)
     gammas = gamma_0 + np.random.normal(0.,gamma_sig,Nlens)
     logreffs = logreff_0 + 0.59*(mstars - 11.) -0.26*(zds - 0.7)
     reffs = 10.**logreffs
@@ -65,7 +65,38 @@ def fisher_price_sample(Nlens=1000,mmu=11.5,msig=0.3,mdm_0=10.5,mdm_sig=0.1,gamm
     mstar_sample = []
     radmagrat_sample = []
     for i in range(0,Nlens):
-        lens = lens_models.spherical_cow(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mdm=10.**mdms[i],reff_phys = reffs[i],rs_phys=10.*reffs[i],gamma=gammas[i])
+        lens = lens_models.spherical_cow(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mdm5=10.**mdms[i],reff_phys = reffs[i],rs_phys=10.*reffs[i],gamma=gammas[i])
+        lens.normalize()
+        lens.get_caustic()
+
+        ysource = (np.random.rand(1))**0.5*lens.caustic
+
+        lens.source = ysource
+        lens.get_images()
+        lens.get_radmag_ratio()
+
+        if lens.images is None:
+            df
+
+        lenses.append(lens)
+        mstar_sample.append((mstars_meas[i],mstar_err))
+        radmagrat_sample.append((lens.radmag_ratio + radmagrat_errs[i],radmagrat_err))
+
+    f = open(outname,'w')
+    pickle.dump((lenses,mstar_sample,radmagrat_sample),f)
+    f.close()
+
+
+
+def simple_powerlaw_sample(Nlens=1000,gmu=2.1,gsig=0.18,remu=1.5,resig=0.3,radmagrat_err=0.015,outname='simple_powerlaw.dat'):
+
+    reins = np.random.normal(remu,resig,Nlens)
+    gammas = np.random.normal(gmu,gsig,Nlens)
+
+    lenses = []
+    radmagrat_sample = []
+    for i in range(0,Nlens):
+        lens = lens_models.sps(zd=0.3,zs=1.,gamma=gammas[i])
         lens.normalize()
         lens.get_caustic()
 

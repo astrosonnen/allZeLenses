@@ -7,6 +7,7 @@ from scipy.integrate import quad
 from scipy.interpolate import splrep
 import os
 
+grid_dir = '/setri6/sonnen/allZeLenses/'
 
 def b(n):
     return 2*n - 1./3. + 4/405./n + 46/25515/n**2
@@ -117,18 +118,18 @@ def make_M3d_grid():
     pass
 
 
-if not os.path.isfile('sersic_M2d_grid.dat'):
+if not os.path.isfile(grid_dir+'sersic_M2d_grid.dat'):
     make_M2d_grid()
 
-if not os.path.isfile('sersic_lenspot_grid.dat'):
+if not os.path.isfile(grid_dir+'sersic_lenspot_grid.dat'):
     make_lenspot_grid()
 
 
-f = open('sersic_M2d_grid.dat','r')
+f = open(grid_dir+'sersic_M2d_grid.dat','r')
 M2d_grid = pickle.load(f)
 f.close()
 
-f = open('sersic_lenspot_grid.dat','r')
+f = open(grid_dir+'sersic_lenspot_grid.dat','r')
 pot_grid = pickle.load(f)
 f.close()
 

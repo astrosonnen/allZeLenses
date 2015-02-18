@@ -354,7 +354,7 @@ def hierarchical_strong_prior(lenses,deltaT=5.,Nlens=100,N=11000,burnin=1000,toy
     f.close()
 
 
-def do_fisher_price(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11000,burnin=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
+def do_fisher_price(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11000,burnin=1000,Nis=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
 
     from scipy.special import gamma as gfunc,gammainc,erf
 
@@ -377,8 +377,11 @@ def do_fisher_price(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11
         chain = pickle.load(f)
         f.close()
 
+        samp = np.random.choice(np.arange(5000,10000),Nis)
+
         for par in chain:
-            chain[par] = chain[par].flatten()[-5000:]
+            chain[par] = chain[par].flatten()[samp]
+            #chain[par] = chain[par].flatten()[-1000:]
 
         chain['timedelay'] /= day
         if chain['timedelay'].mean() != chain['timedelay'].mean():
@@ -404,8 +407,8 @@ def do_fisher_price(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11
     cvar = pymc.Uniform('c',lower=0.,upper=2,value=1.0)
     scatterg = pymc.Uniform('sg',lower=0.,upper=2.,value=0.1)
 
-    fvar = pymc.Uniform('f',lower=8.,upper=13.,value=10.3)
-    mmstar = pymc.Uniform('mmstar',lower=-2.,upper=2.,value=1.0)
+    fvar = pymc.Uniform('f',lower=8.,upper=13.,value=11.0)
+    mmstar = pymc.Uniform('mmstar',lower=-2.,upper=2.,value=0.0)
     scatterm = pymc.Uniform('sm',lower=0.,upper=3.,value=0.1)
 
     mmu = pymc.Uniform('mmu',lower=10.,upper=13.,value=11.5)
@@ -427,12 +430,12 @@ def do_fisher_price(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11
             mglob_model = mmu
 
             gexp = 1./s1*np.exp(-(gmodel - chains[i]['gamma'])**2/(2.*s1**2))
-            mexp = 1./s2*np.exp(-(mmodel - chains[i]['mdm'])**2/(2.*s2**2))
+            mexp = 1./s2*np.exp(-(mmodel - chains[i]['mdm5'])**2/(2.*s2**2))
             msexp = 1./msig*np.exp(-(mglob_model - chains[i]['mstar'])**2/(2.*msig**2))
 
             dtexp = 1./t_meas[i][1]*np.exp(-(chains[i]['timedelay']/H0*70. - t_meas[i][0])**2/(2.*t_meas[i][1]**2))
 
-            norms = 0.5*(erf((mmodel - 9.)/2.**0.5/s2) - erf((mmodel - 12.5)/2.**0.5/s2))*0.5*(erf((gmodel - 0.2)/2.**0.5/s1) - erf((gmodel - 2.2)/2.**0.5/s1))
+            norms = 0.5*(erf((mmodel - 10.)/2.**0.5/s2) - erf((mmodel - 12.)/2.**0.5/s2))*0.5*(erf((gmodel - 0.2)/2.**0.5/s1) - erf((gmodel - 1.8)/2.**0.5/s1))
 
             totlike += np.log((gexp*mexp*msexp*dtexp*norms).mean())
 
@@ -518,7 +521,7 @@ def hierarchical_correct_norm(lenses,deltaT=5.,Nlens=100,N=11000,burnin=1000,out
     cvar = pymc.Uniform('c',lower=0.,upper=2,value=1.0)
     scatterg = pymc.Uniform('sg',lower=0.,upper=2.,value=0.1)
 
-    fvar = pymc.Uniform('f',lower=8.,upper=13.,value=10.3)
+    fvar = pymc.Uniform('f',lower=8.,upper=13.,value=11.)
     mmstar = pymc.Uniform('mmstar',lower=-2.,upper=2.,value=1.0)
     scatterm = pymc.Uniform('sm',lower=0.,upper=3.,value=0.1)
 
@@ -729,12 +732,10 @@ def legit_hierarchical(lenses,mstar_meas,mstar_err=0.1,deltaT=5.,Nlens=100,N=110
     f.close()
 
 
-def hierarchical_powerlaw(lenses,mstar_meas,deltaT=5.,Nlens=100,N=11000,burnin=1000,outname=None):
+def hierarchical_powerlaw(lenses,mstar_meas,deltaT=5.,Nlens=100,N=11000,Nis=1000,burnin=1000,outname=None,chaindir = '/home/sonnen/allZeLenses/mcmc_chains/',toyname='powerlaw'):
 
     from scipy.special import gamma as gfunc,gammainc
 
-    chaindir = '/home/sonnen/allZeLenses/mcmc_chains/'
-    toyname = 'powerlaw_nfw'
 
     chains = []
     t_meas = []
@@ -756,10 +757,12 @@ def hierarchical_powerlaw(lenses,mstar_meas,deltaT=5.,Nlens=100,N=11000,burnin=1
         chain = pickle.load(f)
         f.close()
 
-        for par in chain:
-            chain[par] = chain[par].flatten()
+        samp = np.random.choice(np.arange(5000,10000),Nis)
 
-        chain['mstar'] = np.random.normal(mstar_meas[i],0.1,len(chain['gamma']))
+        for par in chain:
+            chain[par] = chain[par].flatten()[samp]
+
+        chain['mstar'] = np.random.normal(mstar_meas[i][0],mstar_meas[i][1],len(chain['gamma']))
         chain['timedelay'] /= day
         if chain['timedelay'].mean() != chain['timedelay'].mean():
             print i
@@ -790,32 +793,39 @@ def hierarchical_powerlaw(lenses,mstar_meas,deltaT=5.,Nlens=100,N=11000,burnin=1
     mmu = pymc.Uniform('mmu',lower=10.,upper=13.,value=11.5)
     msig = pymc.Uniform('msig',lower=0.,upper=2.,value=0.3)
 
+    m5_0 = pymc.Uniform('m5_0',lower=10.,upper=12.,value=11.)
+    m5_mstar = pymc.Uniform('m5_mstar',lower=-2.,upper=2.,value=1.)
+    m5_sig = pymc.Uniform('m5_sig',lower=0.,upper=1.,value=0.1)
+
+
     H0 = pymc.Uniform('H0',lower=40,upper=100.,value=70.)
 
-    pars = [cvar,gmstar,greff,scatterg,mmu,msig,H0]
+    pars = [cvar,gmstar,greff,scatterg,mmu,msig,m5_0,m5_mstar,m5_sig,H0]
 
 
     @pymc.deterministic(name='likeall')
-    def likeall(c=cvar,gm=gmstar,gr=greff,s1=scatterg,mmu=mmu,msig=msig,H0=H0):
+    def likeall(c=cvar,gm=gmstar,gr=greff,s1=scatterg,mmu=mmu,msig=msig,m5_0=m5_0,m5_mstar=m5_mstar,m5_sig=m5_sig,H0=H0):
 
         totlike = 0.
 
         for i in range(0,Nlens):
             gmodel = c + gm*(chains[i]['mstar'] - 11.5) + gr*(reffs[i] - logr0)
             mglob_model = mmu
+            m5_model = m5_0 + m5_mstar*(chains[i]['mstar'] - 11.5)
 
             gexp = 1./s1*np.exp(-(gmodel - chains[i]['gamma'])**2/(2.*s1**2))
             msexp = 1./msig*np.exp(-(mglob_model - chains[i]['mstar'])**2/(2.*msig**2))
+            m5exp = 1./m5_sig*np.exp(-(m5_model - chains[i]['m5kpc'])**2/(2.*m5_sig**2))
 
             dtexp = 1./t_meas[i][1]*np.exp(-(chains[i]['timedelay']/H0*70. - t_meas[i][0])**2/(2.*t_meas[i][1]**2))
-            totlike += np.log((gexp*msexp*dtexp).mean())
+            totlike += np.log((gexp*msexp*m5exp*dtexp).mean())
 
         return totlike
 
      
     @pymc.stochastic(observed=True,name='logp')
     #def logp(value=0.,c=cvar,s1=scatterg,f=fvar,s2=scatterm,mmu=mmu,msig=msig,mmstar=mmstar,H0=H0,kextk=kextk_var,theta=theta_var):
-    def logp(value=0.,c=cvar,gm=gmstar,gr=greff,s1=scatterg,mmu=mmu,msig=msig,H0=H0):
+    def logp(value=0.,c=cvar,gm=gmstar,gr=greff,s1=scatterg,mmu=mmu,msig=msig,m5_0=m5_0,m5_mstar=m5_mstar,m5_sig=m5_sig,H0=H0):
         return likeall
      
     M = pymc.MCMC(pars+[likeall])

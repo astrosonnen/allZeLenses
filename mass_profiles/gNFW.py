@@ -8,6 +8,8 @@ from scipy.interpolate import splrep
 
 rsgrid = 50.
 
+grid_dir = '/setri6/sonnen/allZeLenses/'
+
 
 def rho(r,rs,beta):
     return 1./r**beta/(1. + r/rs)**(3.-beta)
@@ -130,18 +132,18 @@ def make_M3d_grid():
     pass
 
 
-if not os.path.isfile('gNFW_rs%d_M2dRbetam3_grid.dat'%int(rsgrid)):
+if not os.path.isfile(grid_dir+'gNFW_rs%d_M2dRbetam3_grid.dat'%int(rsgrid)):
     make_M2dRbetam3_grid()
 
-if not os.path.isfile('gNFW_rs%d_lenspotRbetam3_grid.dat'%int(rsgrid)):
+if not os.path.isfile(grid_dir+'gNFW_rs%d_lenspotRbetam3_grid.dat'%int(rsgrid)):
     make_lenspotRbetam3_grid()
 
 
-f = open('gNFW_rs%d_M2dRbetam3_grid.dat'%rsgrid,'r')
+f = open(grid_dir+'gNFW_rs%d_M2dRbetam3_grid.dat'%rsgrid,'r')
 M2d_grid = pickle.load(f)
 f.close()
 
-f = open('gNFW_rs%d_lenspotRbetam3_grid.dat'%rsgrid,'r')
+f = open(grid_dir+'gNFW_rs%d_lenspotRbetam3_grid.dat'%rsgrid,'r')
 pot_grid = pickle.load(f)
 f.close()
 

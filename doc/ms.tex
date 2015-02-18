@@ -115,16 +115,94 @@ In this paper we use some toy mock lens ensembles to address the following quest
 
 \end{itemize}
 
-This paper is organized as follows. In \Sref{sec:data} we describe our simple toy model and the mock data that it generates. In \Sref{sec:hb} we outline the probability theory underlying the various inferences that appear in this work. Then, in Sections~\ref{sec:expt1}--\ref{sec:expt3} we describe our numerical experiments, generating mock samples of lenses and measuring cosmological parameters -- Hubble's constant -- from them. In \Sref{sec:discuss} we discuss our results, and present our conclusions in \Sref{sec:conclude}.
+This paper is organized as follows. In \Sref{sec:data} we describe our simple toy model and the mock data that it generates. In \Sref{sec:hb} we outline the probability theory underlying the various inferences that appear in this work. Then, in Sections~\ref{sec:expt1}--\ref{sec:expt5} we describe our numerical experiments, generating mock samples of lenses and measuring cosmological parameters -- Hubble's constant -- from them. In \Sref{sec:discuss} we discuss our results, and present our conclusions in \Sref{sec:conclude}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Next section}
-\label{sec:next}
+\section{Methods}\label{sec:hb}
+
+The strategy we adopt to address each question is the following.
+\begin{enumerate}
+\item We generate a mock ensemble of time-delay lenses and simulate lensing measurements
+\item We propose a model describing the population of lenses and fit it to the mock observations. This model is in general different from the one used to generate the mocks.
+\item We fit the model to the data with a Bayesian hierarchical inference method.
+\item We carry out statistical tests to assess how well the model is able to reproduce the data.
+\end{enumerate}
+
+\subsection{The mock galaxy population}\label{ssec:mock}
+Each lens system consists of a lens galaxy at redshift $z_d$ and a source galaxy at redshift $z_s > z_d$.
+The lens has a spherical mass density profile resulting from the sum of two mass component: a stellar bulge and a dark matter halo.
+As will be shown later in this paper, the choice of a spherical mass distribution does not affect our conclusions.
+The stellar component is described by a S\'{e}rsic profile \citep{Sersic1968}, while the dark matter halo is described by a generalized Navarro, Frenk \& White profile. 
+The parameters describing the mass model are therefore the stellar mass $M_*$, the effective radius $\reff$, the dark matter mass $\mdm$, dark matter scale radius $r_s$ and inner slope $\gammadm$.
+
+The mocks are generated as follows.
+We generate a large number of dark matter halos from a distribution function motivated by numerical simulations, then assign stellar masses using a stellar-to-halo mass relation (SHMR).
+We allow for correlations between dark matter slope, dark matter mass and stellar mass. 
+We draw a source for each lens and calculate the Einstein radius for each lens-source pair.
+From this large set of systems we draw a sample of {\em observed} lenses. Each system is weighted by a selection probability that takes into account its lensing cross-section and its detectability in a realistic lens survey.
+We finally simulate measurements of the positions of the multiply imaged QSO, constraints from modeling the multiply imaged source galaxy surface brightness distribution, constraints from stellar population synthesis models of the lens galaxy light, time delays between the multiple images of the QSO.
+
+
+\subsection{The model}\label{ssec:model}
+
+We propose a model family describing the density profile of each lens. The model is described by a set of parameters.
+We propose a functional form for the distribution of the lens parameters in the population of lens galaxies.
+This population distribution function is described by a set of hyper-parameters.
+The Hubble constant $H_0$ is one of the model parameters.
+
+\subsection{Bayesian hierarchical inference}
+We fit this model to the mock data with a Bayesian hierarchical inference method.
+
+
+
+\subsection{Posterior predictive tests}\label{ssec:tests}
+We use the inferred posterior probability distribution to draw samples of mock datasets.
+For each mock realization we perform a K-S test to calculate the probability of it being drawn from the same distribution as the actual data.
+We then look at the distribution in p-values and decide how well we are doing.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{The merit of Bayesian hierarchical inference}\label{sec:expt1}
+
+We generate mock samples from a somewhat simple distribution of lenses.
+We fit the data with the same model used to generate the mocks using two differrent techniques. First we take an apparently more conservative approach and combine only the inference on the Hubble constant for each lens system.
+Then we apply the full Bayesian hierarchical inference technique and compare the results obtained in the two cases in terms of precision and accuracy.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{A very flexible model}\label{sec:expt2}
+
+We fit a model that is more complex than the one used to generate the data.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{A simplistic model}\label{sec:expt3}
+
+We generate a realistic mock sample and fit it with two simplistic models with increasing degrees of complexity.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{A realistic case}\label{sec:expt4}
+
+In \Sref{sec:expt3} we explored the effects of making simplified assumptions on the density profile of individual lenses.
+Here we isolate the effects of assuming a simplified model for the population distribution.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Using all of the available data}\label{sec:expt5}
+
+So far the mock observations were tailored to what can be reasonably done by following-up a selected sample of lenses with high-cadence monitoring and high resolution imaging.
+Here we explore the advantages of adding a significantly larger sample of lenses with low-quality time-delays from LSST and not-as-good imaging from Euclid.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 
 \section{Conclusions}
 \label{sec:conclude}
