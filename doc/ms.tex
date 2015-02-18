@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
-% All Ze Lenses
-% 
+%
+% All Ze Lenses: Paper I
+%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \documentclass[useAMS,usenatbib]{mn2e}
@@ -19,10 +19,9 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\title[All The Lenses]
-{The Relative Information Contents of 
-Future Samples of All Time Delay, and All Other, Gravitational Lenses}
-    
+\title[Cosmology with Large Samples of Lenses]
+{Accurate Cosmological Inferences from Large Samples of Time Delay Gravitational Lenses}
+
 \author[All of us]{%
   Alessandro Sonnenfeld,$^{1}$\thanks{\email}
   Phil Marshall,$^{2}$
@@ -43,10 +42,10 @@ Future Samples of All Time Delay, and All Other, Gravitational Lenses}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
-             
+
 \date{To be submitted to MNRAS}
-             
-\pagerange{\pageref{firstpage}--\pageref{lastpage}}\pubyear{2XXX}
+
+\pagerange{\pageref{firstpage}--\pageref{lastpage}}\pubyear{2015}
 
 \maketitle
 
@@ -55,7 +54,28 @@ Future Samples of All Time Delay, and All Other, Gravitational Lenses}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{abstract}
-Write this first.
+
+Time delay distance cosmography is a promising cosmographic probe. Stage III and
+IV Dark Energy surveys (such as those planned with DES and LSST) will contain
+samples of hundreds of gravitationally-lensed quasars and supernovae, which,
+when followed up with high resolution imaging, should each yield a measurement
+of distance in the universe that is precise to 5-10\%. In this paper we explore
+the hierarchical inference of cosmological parameters from toy simulated lens
+samples, investigating the impact of various simplifying assumptions on the
+accuracy achieved in the joint analysis. We find that to realize the available
+sub-percent accuracy on the Hubble constant, the individual lenses' measurements
+must be combined quite carefully: first marginalizing over individual system's
+model parameters and then multiplying the marginal likelihoods can introduce
+biases of up to [X\%]. In a full hierarchical inference (carried out by
+importance sampling of interim MCMC chains), we find that the cosmology accuracy
+is [more/less] sensitive to simple assumptions about the lens model than it is
+the structure of the conditional PDFs for those lens models' parameters, and
+that working with lens models that are {\it more}  flexible than the true model
+incurs [only small/quite large] losses in precision. Finally, we find that a
+parent ensemble that is three times larger than the anticpated LSST ``Gold''
+sample of lenses contains enough information to increase the precision by [a
+factor of X], even when no high resolution follow-up data is available.
+
 \end{abstract}
 
 \begin{keywords}
@@ -66,22 +86,36 @@ Write this first.
 
 \section{Introduction}
 
-Goes here.
+Review of time delay lens cosmography. Suyu papers.
 
-We are interested in the following questions:
+Promise for the future. Large samples from DES and LSST.
+
+Systematic errors to be addressed. Time delay accuracy, lens environments and line of sight, lens model degeneracy. Schneider and Sluse, MSD. Solution in Suyu response: more flexible models. Information to constrain these? Better follow-up data, independent mass constraints, or...
+
+Degeneracy breaking by ensemble analysis. Lenses self-similar: exploit structure in the data to break degeneracies, as you could with prior information but instead extracted during the analysis. Hierarchical inference, citations.
+
+In this paper we use some toy mock lens ensembles to address the following questions:
 
 \begin{itemize}
 
-\item First question?
+\item How much bias would we introduce by performing a simple combination of marginalized likelihoods, one for each lens system, relative to a hierarachical inference assuming the same model?
+% Whiteboard Q1
 
-\item Second question? 
+\item Do we lose any cosmographic precision by including additional hyper-parameters in such an analysis? What happens if the assumed model is {\it more} flexible than the true model?
+% Whiteboard Q1,2
 
-\item Third question? 
+\item In practice we expect all of our lens models to be simplified descriptions of lens galaxies. How much bias are we likely to introduce via these assumptions?
+% Whiteboard Q3,4,5
+
+\item We can over-simplify the model both at the individual lens level, but also at the population level, by assuming insufficiently flexible forms for the conditional PDFs for the lens model parameters. To which of these types of error is the cosmology accuracy more sensitive?
+% Whiteboard Q4,5
+
+\item How much do we gain in precision by including the rest of the parent lens sample, which has not been followed up? Does this introduce any bias?
+% Whiteboard Q6
 
 \end{itemize}
 
-This paper is organized as follows. In \Sref{sec:first} we \ldots
-In \Sref{sec:discuss} we present our conclusions.
+This paper is organized as follows. In \Sref{sec:data} we describe our simple toy model and the mock data that it generates. In \Sref{sec:hb} we outline the probability theory underlying the various inferences that appear in this work. Then, in Sections~\ref{sec:expt1}--\ref{sec:expt3} we describe our numerical experiments, generating mock samples of lenses and measuring cosmological parameters -- Hubble's constant -- from them. In \Sref{sec:discuss} we discuss our results, and present our conclusions in \Sref{sec:conclude}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -103,9 +137,9 @@ Our conclusions regarding \ldots can be stated as follows:
 
 \item First answer.
 
-\item Second answer. 
+\item Second answer.
 
-\item Third answer. 
+\item Third answer.
 
 \end{itemize}
 
