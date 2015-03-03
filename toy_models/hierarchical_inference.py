@@ -935,3 +935,469 @@ def do_fisher_price_dumb(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100
     f.close()
 
 
+def do_very_simple(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11000,burnin=1000,Nis=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
+
+    from scipy.special import gamma as gfunc,gammainc,erf
+
+
+    chains = []
+    t_meas = []
+    reffs = []
+    zd = []
+
+    if type(Nlens) == type(1):
+        lenslim = (0,Nlens)
+    else:
+        lenslim = Nlens
+        Nlens = lenslim[1] - lenslim[0]
+
+    print 'sampling lenses %d to %d'%lenslim
+
+    for i in range(lenslim[0],lenslim[1]):
+        f = open(chaindir+lensname+'_%03d.dat'%i,'r')
+        chain = pickle.load(f)
+        f.close()
+
+        samp = np.random.choice(np.arange(5000,10000),Nis)
+
+        for par in chain:
+            chain[par] = chain[par].flatten()[samp]
+            #chain[par] = chain[par].flatten()[-1000:]
+
+        chain['timedelay'] /= day
+        if chain['timedelay'].mean() != chain['timedelay'].mean():
+            print i
+            df
+
+        chains.append(chain)
+
+        lens = lenses[i]
+        lens.get_time_delay()
+
+        time_meas = (lens.timedelay/day + np.random.normal(0.,deltaT,1),deltaT)
+        #time_meas = (lens.timedelay/day*(1. + np.random.normal(0.,0.05,1)),deltaT)
+
+        t_meas.append(time_meas)
+
+        zd.append(lens.zd)
+        reffs.append(np.log10(lens.reff_phys))
+
+
+    #defines the hyper-parameters
+
+    fvar = pymc.Uniform('f',lower=10.5,upper=11.5,value=11.0)
+    scatterm = pymc.Uniform('sm',lower=0.,upper=1.,value=0.1)
+
+    mmu = pymc.Uniform('mmu',lower=11.,upper=12.,value=11.5)
+    msig = pymc.Uniform('msig',lower=0.,upper=2.,value=0.3)
+
+    H0 = pymc.Uniform('H0',lower=60,upper=80.,value=70.)
+
+    pars = [fvar,scatterm,mmu,msig,H0]
+
+
+    @pymc.deterministic(name='likeall')
+    def likeall(f=fvar,s2=scatterm,mmu=mmu,msig=msig,H0=H0):
+
+        totlike = 0.
+
+        for i in range(0,Nlens):
+            mmodel = f
+            mglob_model = mmu
+
+            mexp = 1./s2*np.exp(-(mmodel - chains[i]['mdm5'])**2/(2.*s2**2))
+            msexp = 1./msig*np.exp(-(mglob_model - chains[i]['mstar'])**2/(2.*msig**2))
+
+            dtexp = 1./t_meas[i][1]*np.exp(-(chains[i]['timedelay']/H0*70. - t_meas[i][0])**2/(2.*t_meas[i][1]**2))
+
+            norms = 0.5*(erf((mmodel - 10.)/2.**0.5/s2) - erf((mmodel - 12.)/2.**0.5/s2))*0.5*(erf((mmu - 10.5)/2.**0.5/msig) - erf((mmu - 12.5)/2.**0.5/msig))
+
+            totlike += np.log((mexp*msexp*dtexp/norms).mean())
+            #totlike += np.log((mexp*msexp*dtexp).mean())
+
+        return totlike
+
+     
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,f=fvar,s2=scatterm,mmu=mmu,msig=msig,H0=H0):
+        return likeall
+     
+    M = pymc.MCMC(pars+[likeall])
+    M.use_step_method(pymc.AdaptiveMetropolis,pars)
+    M.isample(N,burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('likeall')[:]
+
+    if outname is None:
+        outname = chaindir+toyname+'_hierarch_%d-%d.dat'%(lenslim[0],lenslim[1]-1)
+
+    f = open(outname,'w')
+    pickle.dump(outdic,f)
+    f.close()
+
+
+def do_very_simple_dmonly(lenses,lensname='fisher_price_lens',deltaT=5.,Nlens=100,N=11000,burnin=1000,Nis=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
+
+    from scipy.special import gamma as gfunc,gammainc,erf
+
+
+    chains = []
+
+    if type(Nlens) == type(1):
+        lenslim = (0,Nlens)
+    else:
+        lenslim = Nlens
+        Nlens = lenslim[1] - lenslim[0]
+
+    print 'sampling lenses %d to %d'%lenslim
+
+    for i in range(lenslim[0],lenslim[1]):
+        f = open(chaindir+lensname+'_%03d.dat'%i,'r')
+        chain = pickle.load(f)
+        f.close()
+
+        samp = np.random.choice(np.arange(5000,10000),Nis)
+
+        for par in chain:
+            chain[par] = chain[par].flatten()[samp]
+
+        chains.append(chain)
+
+        lens = lenses[i]
+
+    #defines the hyper-parameters
+
+    fvar = pymc.Uniform('f',lower=10.5,upper=11.5,value=11.0)
+    scatterm = pymc.Uniform('sm',lower=0.,upper=1.,value=0.1)
+
+    pars = [fvar,scatterm]
+
+
+    @pymc.deterministic(name='likeall')
+    def likeall(f=fvar,s2=scatterm):
+
+        totlike = 0.
+
+        for i in range(0,Nlens):
+            mmodel = f
+
+            mexp = 1./s2*np.exp(-(mmodel - chains[i]['mdm5'])**2/(2.*s2**2))
+
+            norms = 0.5*(erf((mmodel - 10.)/2.**0.5/s2) - erf((mmodel - 12.)/2.**0.5/s2))
+
+            totlike += np.log((mexp/norms).mean())
+            #totlike += np.log((mexp).mean())
+
+        return totlike
+
+     
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,f=fvar,s2=scatterm):
+        return likeall
+     
+    M = pymc.MCMC(pars+[likeall])
+    M.use_step_method(pymc.AdaptiveMetropolis,pars)
+    M.isample(N,burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('likeall')[:]
+
+    if outname is None:
+        outname = chaindir+toyname+'_hierarch_%d-%d.dat'%(lenslim[0],lenslim[1]-1)
+
+    f = open(outname,'w')
+    pickle.dump(outdic,f)
+    f.close()
+
+
+def do_very_simple_wgrid(lenses,lensname='very_simple_grid',deltaT=5.,Nlens=100,N=11000,burnin=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
+
+    from scipy.special import gamma as gfunc,gammainc,erf
+
+    mstar_grid = np.linspace(10.5,12.5,101)
+    mdm_grid = np.linspace(10.,12.,101)
+
+    MD,MS = np.meshgrid(mdm_grid,mstar_grid)
+    MD_flat = MD.flatten()
+    MS_flat = MS.flatten()
+
+    grids = []
+
+    if type(Nlens) == type(1):
+        lenslim = (0,Nlens)
+    else:
+        lenslim = Nlens
+        Nlens = lenslim[1] - lenslim[0]
+
+    print 'sampling lenses %d to %d'%lenslim
+
+    for i in range(lenslim[0],lenslim[1]):
+        f = open(chaindir+lensname+'_%03d.dat'%i,'r')
+        grid = pickle.load(f)
+        f.close()
+
+        grids.append(grid.flatten())
+
+
+    #defines the hyper-parameters
+
+    fvar = pymc.Uniform('f',lower=10.5,upper=11.5,value=11.0)
+    scatterm = pymc.Uniform('sm',lower=0.05,upper=1.,value=0.1)
+
+    mmu = pymc.Uniform('mmu',lower=11.,upper=12.,value=11.5)
+    msig = pymc.Uniform('msig',lower=0.,upper=2.,value=0.3)
+
+    pars = [fvar,scatterm,mmu,msig]
+
+
+    def loglike(f,s2):
+        totlike = 0.
+
+        for i in range(0,Nlens):
+
+            mexp = 1./s2*np.exp(-(f - MD_flat)**2/(2.*s2**2))
+            #msexp = 1./msig*np.exp(-(mglob_model - MS_flat)**2/(2.*msig**2))
+
+            norms = 0.5*(erf((f - 10.)/2.**0.5/s2) - erf((f - 12.)/2.**0.5/s2))*0.5#*(erf((mmu - 10.5)/2.**0.5/msig) - erf((mmu - 12.5)/2.**0.5/msig))
+
+            totlike += np.log((mexp*grids[i]/norms).mean())
+            #totlike += np.log((mexp*msexp*dtexp).mean())
+
+        return totlike
+
+    print loglike(11.,0.2)
+    print loglike(10.2,0.7)
+
+
+    @pymc.deterministic(name='likeall')
+    def likeall(f=fvar,s2=scatterm,mmu=mmu,msig=msig):
+
+        totlike = 0.
+
+        for i in range(0,Nlens):
+            mmodel = f
+            mglob_model = mmu
+
+            mexp = 1./s2*np.exp(-(mmodel - MD_flat)**2/(2.*s2**2))
+            msexp = 1./msig*np.exp(-(mglob_model - MS_flat)**2/(2.*msig**2))
+
+            norms = 0.5*(erf((mmodel - 10.)/2.**0.5/s2) - erf((mmodel - 12.)/2.**0.5/s2))*0.5*(erf((mmu - 10.5)/2.**0.5/msig) - erf((mmu - 12.5)/2.**0.5/msig))
+
+            totlike += np.log((mexp*msexp*grids[i]/norms).mean())
+            #totlike += np.log((mexp*msexp*dtexp).mean())
+
+        return totlike
+
+     
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,f=fvar,s2=scatterm,mmu=mmu,msig=msig):
+        return likeall
+     
+    M = pymc.MCMC(pars+[likeall])
+    M.use_step_method(pymc.AdaptiveMetropolis,pars)
+    M.isample(N,burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('likeall')[:]
+
+    if outname is None:
+        outname = chaindir+toyname+'_hierarch_%d-%d.dat'%(lenslim[0],lenslim[1]-1)
+
+    f = open(outname,'w')
+    pickle.dump(outdic,f)
+    f.close()
+
+
+def do_exactmstar_wgrid(lenses,lensname='exactmstar_grid',deltaT=5.,Nlens=100,N=11000,burnin=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
+
+    from scipy.special import gamma as gfunc,gammainc,erf
+
+    mdm_grid = np.linspace(10.,12.,101)
+
+    grids = []
+
+    if type(Nlens) == type(1):
+        lenslim = (0,Nlens)
+    else:
+        lenslim = Nlens
+        Nlens = lenslim[1] - lenslim[0]
+
+    print 'sampling lenses %d to %d'%lenslim
+
+    for i in range(lenslim[0],lenslim[1]):
+        f = open(chaindir+lensname+'_%03d.dat'%i,'r')
+        grid = pickle.load(f)
+        f.close()
+
+        grids.append(grid.flatten())
+
+
+    #defines the hyper-parameters
+
+    fvar = pymc.Uniform('f',lower=10.5,upper=11.5,value=11.0)
+    scatterm = pymc.Uniform('sm',lower=0.05,upper=1.,value=0.1)
+
+    pars = [fvar,scatterm]
+
+
+    def loglike(f,s2):
+        totlike = 0.
+
+        for i in range(0,Nlens):
+
+            mexp = 1./s2*np.exp(-(f - mdm_grid)**2/(2.*s2**2))
+
+            norms = 0.5*(erf((f - 10.)/2.**0.5/s2) - erf((f - 12.)/2.**0.5/s2))*0.5
+
+            totlike += np.log((mexp*grids[i]/norms).mean())
+
+        return totlike
+
+    print loglike(11.,0.2)
+    print loglike(10.2,0.7)
+
+
+    @pymc.deterministic(name='likeall')
+    def likeall(f=fvar,s2=scatterm):
+
+        totlike = 0.
+
+        for i in range(0,Nlens):
+
+            mexp = 1./s2*np.exp(-(f - mdm_grid)**2/(2.*s2**2))
+
+            norms = 0.5*(erf((f - 10.)/2.**0.5/s2) - erf((f - 12.)/2.**0.5/s2))
+
+            totlike += np.log((mexp*grids[i]/norms).mean())
+
+        return totlike
+
+     
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,f=fvar,s2=scatterm):
+        return likeall
+     
+    M = pymc.MCMC(pars+[likeall])
+    M.use_step_method(pymc.AdaptiveMetropolis,pars)
+    M.isample(N,burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('likeall')[:]
+
+    if outname is None:
+        outname = chaindir+toyname+'_hierarch_%d-%d.dat'%(lenslim[0],lenslim[1]-1)
+
+    f = open(outname,'w')
+    pickle.dump(outdic,f)
+    f.close()
+
+
+def do_exactsourcepos_wgrid(lenses,lensname='exactsourcepos_grid',deltaT=5.,Nlens=100,N=11000,burnin=1000,outname=None,chaindir='/home/sonnen/allZeLenses/mcmc_chains/'):
+
+    from scipy.special import gamma as gfunc,gammainc,erf
+
+    mstar_grid = np.linspace(10.5,12.5,101)
+    mdm_grid = np.linspace(10.,12.,101)
+
+    MD,MS = np.meshgrid(mdm_grid,mstar_grid)
+    MD_flat = MD.flatten()
+    MS_flat = MS.flatten()
+
+    grids = []
+
+    if type(Nlens) == type(1):
+        lenslim = (0,Nlens)
+    else:
+        lenslim = Nlens
+        Nlens = lenslim[1] - lenslim[0]
+
+    print 'sampling lenses %d to %d'%lenslim
+
+    for i in range(lenslim[0],lenslim[1]):
+        f = open(chaindir+lensname+'_%03d.dat'%i,'r')
+        grid = pickle.load(f)
+        f.close()
+
+        grids.append(grid.flatten())
+
+
+    #defines the hyper-parameters
+
+    fvar = pymc.Uniform('f',lower=10.5,upper=11.5,value=11.0)
+    scatterm = pymc.Uniform('sm',lower=0.05,upper=1.,value=0.1)
+
+    mmu = pymc.Uniform('mmu',lower=11.,upper=12.,value=11.5)
+    msig = pymc.Uniform('msig',lower=0.,upper=2.,value=0.3)
+
+    pars = [fvar,scatterm,mmu,msig]
+
+
+    def loglike(f,s2):
+        totlike = 0.
+
+        for i in range(0,Nlens):
+
+            mexp = 1./s2*np.exp(-(f - MD_flat)**2/(2.*s2**2))
+            #msexp = 1./msig*np.exp(-(mglob_model - MS_flat)**2/(2.*msig**2))
+
+            norms = 0.5*(erf((f - 10.)/2.**0.5/s2) - erf((f - 12.)/2.**0.5/s2))*0.5#*(erf((mmu - 10.5)/2.**0.5/msig) - erf((mmu - 12.5)/2.**0.5/msig))
+
+            totlike += np.log((mexp*grids[i]/norms).mean())
+            #totlike += np.log((mexp*msexp*dtexp).mean())
+
+        return totlike
+
+    print loglike(11.,0.2)
+    print loglike(10.2,0.7)
+
+
+    @pymc.deterministic(name='likeall')
+    def likeall(f=fvar,s2=scatterm,mmu=mmu,msig=msig):
+
+        totlike = 0.
+
+        for i in range(0,Nlens):
+            mmodel = f
+            mglob_model = mmu
+
+            mexp = 1./s2*np.exp(-(mmodel - MD_flat)**2/(2.*s2**2))
+            msexp = 1./msig*np.exp(-(mglob_model - MS_flat)**2/(2.*msig**2))
+
+            norms = 0.5*(erf((mmodel - 10.)/2.**0.5/s2) - erf((mmodel - 12.)/2.**0.5/s2))*0.5*(erf((mmu - 10.5)/2.**0.5/msig) - erf((mmu - 12.5)/2.**0.5/msig))
+
+            totlike += np.log((mexp*msexp*grids[i]/norms).mean())
+            #totlike += np.log((mexp*msexp*dtexp).mean())
+
+        return totlike
+
+     
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,f=fvar,s2=scatterm,mmu=mmu,msig=msig):
+        return likeall
+     
+    M = pymc.MCMC(pars+[likeall])
+    M.use_step_method(pymc.AdaptiveMetropolis,pars)
+    M.isample(N,burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('likeall')[:]
+
+    if outname is None:
+        outname = chaindir+toyname+'_hierarch_%d-%d.dat'%(lenslim[0],lenslim[1]-1)
+
+    f = open(outname,'w')
+    pickle.dump(outdic,f)
+    f.close()
+
+

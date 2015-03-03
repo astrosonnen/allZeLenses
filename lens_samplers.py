@@ -9,7 +9,7 @@ from scipy.optimize import brentq
 from scipy.misc import derivative
 import pymc
 import pickle
-import emcee
+#import emcee
 
 day = 24.*3600.
 
@@ -680,5 +680,245 @@ def emcee_spherical_cow_exactrein(lens,mstar_meas,radmagrat_meas,N=11000,burnin=
 
     return outdic
 
+
+def fit_very_simple(lens,mstar_meas,radmagrat_meas,N=11000,burnin=1000,imerr=0.1,thin=1): #fits a spherical cow model to image position and stellar mass data. Does NOT fit the time-delay (that's done later in the hierarchical inference step). Sampling is not efficient and gives biased results.
+
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm5=lens.mdm5,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=1.,mdm5=0.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=0.,mdm5=1.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+
+    model_lens.normalize()
+    model_bulge.normalize()
+    model_halo.normalize()
+
+    xA,xB = lens.images
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr)
+
+
+    mstar_max = (xA - xB)/(model_bulge.alpha(xA) - model_bulge.alpha(xB))
+    mdm_max = (xA - xB)/(model_halo.alpha(xA) - model_halo.alpha(xB))
+
+    mstar_var = pymc.Uniform('lmstar',lower=10.5,upper=12.5,value=np.log10(lens.mstar))
+    mdm5_var = pymc.Uniform('mdm5',lower=10.,upper=12.,value=np.log10(lens.mdm5))
+    #s_var = pymc.Uniform('s',lower=0.,upper=2.*lens.caustic,value=lens.source)
+    s_max = 2.*lens.caustic
+    s_var = pymc.Uniform('s',lower=0.,upper=1.,value=(lens.source/s_max)**2)
+
+    @pymc.deterministic()
+    def images(mstar=mstar_var,mdm5=mdm5_var,s=s_var):
+
+        model_lens.source = s**0.5*s_max
+        model_lens.mstar = 10.**mstar
+        model_lens.gamma = gamma
+        model_lens.mdm5 = 10.**mdm5
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+        return model_lens.images
+
+
+    @pymc.deterministic()
+    def timedelay(mstar=mstar_var,mdm5=mdm5_var,s=s_var):
+
+        model_lens.source = s**0.5*s_max
+        model_lens.mstar = 10.**mstar
+        model_lens.mdm5 = 10.**mdm5
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+        if len(model_lens.images) < 2:
+            return 0.
+        else:
+            model_lens.get_time_delay()
+            return float(model_lens.timedelay)
+
+
+    @pymc.deterministic()
+    def radmag_ratio(mstar=mstar_var,mdm5=mdm5_var,s=s_var):
+
+        model_lens.s = s**0.5*s_max
+        model_lens.mstar = 10.**mstar
+        model_lens.mdm5 = 10.**mdm5
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+
+        if len(model_lens.images)<2:
+            return 0.
+        else:
+            model_lens.get_radmag_ratio()
+            return float(model_lens.radmag_ratio)
+
+
+    @pymc.deterministic()
+    def like(mstar=mstar_var,mdm5=mdm5_var,s=s_var):
+
+        model_lens.mstar = 10.**mstar
+        model_lens.mdm5 = 10.**mdm5
+        model_lens.source = s**0.5*s_max
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+
+        if len(model_lens.images)<2:
+            return -1e300
+        else:
+            imA = float(model_lens.images[0])
+            imB = float(model_lens.images[1])
+            loglike = -0.5*(imA - xA)**2/imerr**2 - 0.5*(imB - xB)**2/imerr**2
+            return loglike -0.5*(mstar - mstar_meas[0])**2/mstar_meas[1]**2 - 0.5*(float(radmag_ratio) - radmagrat_meas[0])**2/radmagrat_meas[1]**2
+
+
+        
+    @pymc.stochastic(observed=True,name='logp')
+    def logp(value=0.,mstar=mstar_var,mdm5=mdm5_var,s=s_var):
+        return like
+
+    pars = [mstar_var,mdm5_var,s_var,timedelay,like,images]
+
+    M = pymc.MCMC(pars)
+    M.isample(N,burnin,thin=thin)
+
+    outdic = {'mstar':M.trace('lmstar')[:],'mdm5':M.trace('mdm5')[:],'timedelay':M.trace('timedelay')[:],'logp':M.trace('like')[:],'source':M.trace('s')[:]**0.5*s_max,'images':M.trace('images')[:]}
+
+    return outdic
+
+
+def likelihood_grid_very_simple(lens,mstar_meas,radmagrat_meas,Ngrid=101,imerr=0.1): #evaulates the likelihood on a grid of values of mstar and mdm and maringalizing over the source position. It does NOT compute the time-delay.
+
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm5=lens.mdm5,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_bulge = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=1.,mdm5=0.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+    model_halo = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=0.,mdm5=1.,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+
+    model_lens.normalize()
+    model_bulge.normalize()
+    model_halo.normalize()
+
+    xA,xB = lens.images
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr)
+
+
+    mstar_max = (xA - xB)/(model_bulge.alpha(xA) - model_bulge.alpha(xB))
+    mdm_max = (xA - xB)/(model_halo.alpha(xA) - model_halo.alpha(xB))
+
+    mstar_grid = np.linspace(10.5,12.5,Ngrid)
+    mdm5_grid = np.linspace(10.,12.,Ngrid)
+    s_grid = np.linspace(0.,1.,Ngrid)
+
+    s_max = 2.*lens.caustic
+
+    likelihood = np.zeros((Ngrid,Ngrid))
+
+    for i in range(0,Ngrid):
+        print i
+        for j in range(0,Ngrid):
+            likes = np.zeros(Ngrid)
+
+            model_lens.mstar = 10.**mstar_grid[i]
+            model_lens.mdm5 = 10.**mdm5_grid[j]
+            model_lens.normalize()
+
+
+            for k in range(0,Ngrid):
+
+                model_lens.source = s_grid[k]**0.5*s_max
+
+                model_lens.fast_images()
+                if len(model_lens.images) == 2:
+                    model_lens.get_radmag_ratio()
+
+                    imA = float(model_lens.images[0])
+                    imB = float(model_lens.images[1])
+                    likes[k] = np.exp(-0.5*(imA - xA)**2/imerr**2 - 0.5*(imB - xB)**2/imerr**2 - 0.5*(lens.radmag_ratio - radmagrat_meas[0])**2/radmagrat_meas[1]**2)
+            
+            likelihood[i,j] = np.exp(-0.5*(mstar_grid[i] - mstar_meas[0])**2/mstar_meas[1]**2)*likes.mean()
+
+    return likelihood
+
+
+def likelihood_grid_exactmstar(lens,radmagrat_meas,Ngrid=101,imerr=0.1): #evaulates the likelihood on a grid of values of mdm and maringalizing over the source position. It does NOT compute the time-delay.
+
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm5=lens.mdm5,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+
+    model_lens.normalize()
+
+    xA,xB = lens.images
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr)
+
+    mdm5_grid = np.linspace(10.,12.,Ngrid)
+    s_grid = np.linspace(0.,1.,Ngrid)
+
+    s_max = 2.*lens.caustic
+
+    likelihood = np.zeros(Ngrid)
+
+    for i in range(0,Ngrid):
+        likes = np.zeros(Ngrid)
+
+        model_lens.mdm5 = 10.**mdm5_grid[i]
+        model_lens.normalize()
+
+        for k in range(0,Ngrid):
+
+            model_lens.source = s_grid[k]**0.5*s_max
+
+            model_lens.fast_images()
+            if len(model_lens.images) == 2:
+                model_lens.get_radmag_ratio()
+
+                imA = float(model_lens.images[0])
+                imB = float(model_lens.images[1])
+                likes[k] = np.exp(-0.5*(imA - xA)**2/imerr**2 - 0.5*(imB - xB)**2/imerr**2 - 0.5*(lens.radmag_ratio - radmagrat_meas[0])**2/radmagrat_meas[1]**2)
+        
+        likelihood[i] = likes.mean()
+
+    return likelihood
+
+
+def likelihood_grid_exactsourcepos(lens,mstar_meas,radmagrat_meas,Ngrid=101,imerr=0.1): #evaulates the likelihood on a grid of values of mstar and mdm and maringalizing over the source position. It does NOT compute the time-delay.
+
+    model_lens = lens_models.spherical_cow(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mdm5=lens.mdm5,reff_phys=lens.reff_phys,n=lens.n,rs_phys=lens.rs_phys,gamma=lens.gamma,kext=lens.kext,images=lens.images,source=lens.source)
+
+    model_lens.normalize()
+
+    xA,xB = lens.images
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr)
+
+    mstar_grid = np.linspace(10.5,12.5,Ngrid)
+    mdm5_grid = np.linspace(10.,12.,Ngrid)
+
+    likelihood = np.zeros((Ngrid,Ngrid))
+
+    for i in range(0,Ngrid):
+        print i
+        for j in range(0,Ngrid):
+
+            model_lens.mstar = 10.**mstar_grid[i]
+            model_lens.mdm5 = 10.**mdm5_grid[j]
+            model_lens.normalize()
+
+            model_lens.fast_images()
+            if len(model_lens.images) == 2:
+                model_lens.get_radmag_ratio()
+
+                imA = float(model_lens.images[0])
+                imB = float(model_lens.images[1])
+                like = np.exp(-0.5*(imA - xA)**2/imerr**2 - 0.5*(imB - xB)**2/imerr**2 - 0.5*(lens.radmag_ratio - radmagrat_meas[0])**2/radmagrat_meas[1]**2)
+        
+                likelihood[i,j] = np.exp(-0.5*(mstar_grid[i] - mstar_meas[0])**2/mstar_meas[1]**2)*like
+
+    return likelihood
 
 
