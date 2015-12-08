@@ -7,7 +7,7 @@ from scipy.integrate import quad
 from scipy.interpolate import splrep
 import os
 
-grid_dir = '/setri6/sonnen/allZeLenses/'
+grid_dir = '/gdrive/projects/allZeLenses/'
 
 def b(n):
     return 2*n - 1./3. + 4/405./n + 46/25515/n**2
@@ -53,7 +53,7 @@ def deproject(r,n,Re):
     #should return an array with values of rho at radius r
     deriv = lambda R: -b(n)/n*(R/Re)**(1/n)/R*I(R,n,Re)
     
-    rho = -1/np.pi*quad(lambda R: deriv(R)/sqrt(R**2 - r**2),r,np.inf)[0]
+    rho = -1/np.pi*quad(lambda R: deriv(R)/np.sqrt(R**2 - r**2),r,np.inf)[0]
     return rho
 
 

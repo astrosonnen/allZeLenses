@@ -13,6 +13,267 @@ import pickle
 
 day = 24.*3600.
 
+def simple_reality_sample(Nlens=1000,mmu=11.5,msig=0.1,mhalo_0=13.0,mhalo_sig=0.5,mstar_mhalo=0.5,c_sig=0.1,aimf_0=0.,aimf_sig=0.05,logreff_0=0.46,mstar_err=0.1,radmagrat_err=0.015,imerr=0.1,outname='fisher_price_mock_sample.dat'):
+
+    zds = np.random.rand(Nlens)*0.2+0.2
+
+    zss = statistics.general_random(lambda z: np.exp(-(np.log(z-0.4))**2),Nlens,(0.5,4.))
+
+    mhalos = mhalo_0 + np.random.normal(0.,mhalo_sig,Nlens)
+
+    mstars = mmu + mstar_mhalo*(mhalos - 13.) + np.random.normal(0.,msig,Nlens)
+
+    aimfs = np.random.normal(aimf_0,aimf_sig,Nlens)
+
+    mstars_sps = mstars - aimfs
+
+    mstars_meas = mstars_sps + np.random.normal(0.,mstar_err,Nlens)
+
+
+    radmagrat_errs = np.random.normal(0.,radmagrat_err,Nlens)
+
+
+    logcvirs = 0.971 - 0.094*(mhalos-12.) + np.random.normal(0.,c_sig,Nlens)
+    
+
+    logreffs = logreff_0 + 0.59*(mstars - 11.) -0.26*(zds - 0.7)
+    reffs = 10.**logreffs
+
+    lenses = []
+    for i in range(0,Nlens):
+        lens = lens_models.nfw_deV(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mhalo=10.**mhalos[i],reff_phys = reffs[i],cvir=10.**logcvirs[i])
+        lens.normalize()
+        lens.get_caustic()
+
+        ysource = (np.random.rand(1))**0.5*lens.caustic
+
+        lens.source = ysource
+        lens.get_images()
+        lens.get_radmag_ratio()
+
+        lens.get_rein()
+
+        imerrs = np.random.normal(0.,imerr,2)
+        lens.obs_images = ((lens.images[0] + imerrs[0],lens.images[1] + imerrs[1]),imerr)
+        lens.obs_lmstar = (mstars_meas[i],mstar_err)
+        lens.obs_radmagrat = (lens.radmag_ratio + radmagrat_errs[i],radmagrat_err)
+
+        if lens.images is None:
+            df
+
+        lenses.append(lens)
+
+    f = open(outname,'w')
+    pickle.dump(lenses,f)
+    f.close()
+
+
+def simple_reality_knownimf_sample(Nlens=1000,mmu=11.5,msig=0.1,mhalo_0=13.0,mhalo_sig=0.5,mstar_mhalo=0.5,c_sig=0.1,logreff_0=0.46,mstar_err=0.1,radmagrat_err=0.015,imerr=0.1,outname='fisher_price_mock_sample.dat'):
+
+    zds = np.random.rand(Nlens)*0.2+0.2
+
+    zss = statistics.general_random(lambda z: np.exp(-(np.log(z-0.4))**2),Nlens,(0.5,4.))
+
+    mhalos = mhalo_0 + np.random.normal(0.,mhalo_sig,Nlens)
+
+    mstars = mmu + mstar_mhalo*(mhalos - 13.) + np.random.normal(0.,msig,Nlens)
+
+    mstars_meas = mstars + np.random.normal(0.,mstar_err,Nlens)
+
+
+    radmagrat_errs = np.random.normal(0.,radmagrat_err,Nlens)
+
+
+    logcvirs = 0.971 - 0.094*(mhalos-12.) + np.random.normal(0.,c_sig,Nlens)
+    
+
+    logreffs = logreff_0 + 0.59*(mstars - 11.) -0.26*(zds - 0.7)
+    reffs = 10.**logreffs
+
+    lenses = []
+    for i in range(0,Nlens):
+        lens = lens_models.nfw_deV(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mhalo=10.**mhalos[i],reff_phys = reffs[i],cvir=10.**logcvirs[i])
+        lens.normalize()
+        lens.get_caustic()
+
+        ysource = (np.random.rand(1))**0.5*lens.caustic
+
+        lens.source = ysource
+        lens.get_images()
+        lens.get_radmag_ratio()
+        print i,lens.images
+
+        lens.get_rein()
+
+        imerrs = np.random.normal(0.,imerr,2)
+        lens.obs_images = ((lens.images[0] + imerrs[0],lens.images[1] + imerrs[1]),imerr)
+        lens.obs_lmstar = (mstars_meas[i],mstar_err)
+        lens.obs_radmagrat = (lens.radmag_ratio + radmagrat_errs[i],radmagrat_err)
+
+        if lens.images is None:
+            df
+
+        lenses.append(lens)
+
+    f = open(outname,'w')
+    pickle.dump(lenses,f)
+    f.close()
+
+
+def simple_reality_knownimf_fixedc_sample(Nlens=1000,mmu=11.5,msig=0.1,mhalo_0=13.0,mhalo_sig=0.5,mstar_mhalo=0.5,c_sig=0.1,logreff_0=0.46,mstar_err=0.1,radmagrat_err=0.015,imerr=0.1,outname='fisher_price_mock_sample.dat'):
+
+    zds = np.random.rand(Nlens)*0.2+0.2
+
+    zss = statistics.general_random(lambda z: np.exp(-(np.log(z-0.4))**2),Nlens,(0.5,4.))
+
+    mhalos = mhalo_0 + np.random.normal(0.,mhalo_sig,Nlens)
+
+    mstars = mmu + mstar_mhalo*(mhalos - 13.) + np.random.normal(0.,msig,Nlens)
+
+    mstars_meas = mstars + np.random.normal(0.,mstar_err,Nlens)
+
+
+    radmagrat_errs = np.random.normal(0.,radmagrat_err,Nlens)
+
+
+    logcvirs = 0.971 - 0.094*(mhalos-12.)
+    
+
+    logreffs = logreff_0 + 0.59*(mstars - 11.) -0.26*(zds - 0.7)
+    reffs = 10.**logreffs
+
+    lenses = []
+    for i in range(0,Nlens):
+        lens = lens_models.nfw_deV(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mhalo=10.**mhalos[i],reff_phys = reffs[i],cvir=10.**logcvirs[i])
+        lens.normalize()
+        lens.get_caustic()
+
+        ysource = (np.random.rand(1))**0.5*lens.caustic
+
+        lens.source = ysource
+        lens.get_images()
+        lens.get_radmag_ratio()
+        print i,lens.images
+
+        lens.get_rein()
+
+        imerrs = np.random.normal(0.,imerr,2)
+        lens.obs_images = ((lens.images[0] + imerrs[0],lens.images[1] + imerrs[1]),imerr)
+        lens.obs_lmstar = (mstars_meas[i],mstar_err)
+        lens.obs_radmagrat = (lens.radmag_ratio + radmagrat_errs[i],radmagrat_err)
+
+        if lens.images is None:
+            df
+
+        lenses.append(lens)
+
+    f = open(outname,'w')
+    pickle.dump(lenses,f)
+    f.close()
+
+
+def simple_reality_supersimple_sample(Nlens=1000,mmu=11.5,msig=0.1,mhalo_0=13.0,mhalo_sig=0.5,mstar_mhalo=0.5,c_sig=0.1,logreff_0=0.46,mstar_err=0.1,radmagrat_err=0.015,imerr=0.1,outname='fisher_price_mock_sample.dat'):
+
+    zds = 0.3*np.ones(Nlens)
+
+    zss = 2.*np.ones(Nlens)
+
+    mhalos = mhalo_0 + np.random.normal(0.,mhalo_sig,Nlens)
+
+    mstars = mmu + mstar_mhalo*(mhalos - 13.) + np.random.normal(0.,msig,Nlens)
+
+    mstars_meas = mstars + np.random.normal(0.,mstar_err,Nlens)
+
+
+    radmagrat_errs = np.random.normal(0.,radmagrat_err,Nlens)
+
+
+    logcvirs = 0.971 - 0.094*(mhalos-12.)
+    
+
+    reffs = 5.*np.ones(Nlens)
+
+    lenses = []
+    for i in range(0,Nlens):
+        lens = lens_models.nfw_deV(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mhalo=10.**mhalos[i],reff_phys = reffs[i],cvir=10.**logcvirs[i])
+        lens.normalize()
+        lens.get_caustic()
+
+        ysource = (np.random.rand(1))**0.5*lens.caustic
+
+        print i,mstars[i],mhalos[i]
+        lens.source = ysource
+        lens.get_images()
+        lens.get_radmag_ratio()
+
+        lens.get_rein()
+
+        imerrs = np.random.normal(0.,imerr,2)
+        lens.obs_images = ((lens.images[0] + imerrs[0],lens.images[1] + imerrs[1]),imerr)
+        lens.obs_lmstar = (mstars_meas[i],mstar_err)
+        lens.obs_radmagrat = (lens.radmag_ratio + radmagrat_errs[i],radmagrat_err)
+
+        if lens.images is None:
+            df
+
+        lenses.append(lens)
+
+    f = open(outname,'w')
+    pickle.dump(lenses,f)
+    f.close()
+
+
+def simple_reality_knownimf_nomhdep_sample(Nlens=1000,mmu=11.5,msig=0.1,mhalo_0=13.0,mhalo_sig=0.5,c_sig=0.1,logreff_0=0.46,mstar_err=0.1,radmagrat_err=0.015,imerr=0.1,outname='fisher_price_mock_sample.dat'):
+
+    zds = np.random.rand(Nlens)*0.2+0.2
+
+    zss = statistics.general_random(lambda z: np.exp(-(np.log(z-0.4))**2),Nlens,(0.5,4.))
+
+    mhalos = mhalo_0 + np.random.normal(0.,mhalo_sig,Nlens)
+
+    mstars = mmu + np.random.normal(0.,msig,Nlens)
+
+    mstars_meas = mstars + np.random.normal(0.,mstar_err,Nlens)
+
+
+    radmagrat_errs = np.random.normal(0.,radmagrat_err,Nlens)
+
+
+    logcvirs = 0.971 - 0.094*(mhalos-12.) + np.random.normal(0.,c_sig,Nlens)
+    
+
+    logreffs = logreff_0 + 0.59*(mstars - 11.) -0.26*(zds - 0.7)
+    reffs = 10.**logreffs
+
+    lenses = []
+    for i in range(0,Nlens):
+        lens = lens_models.nfw_deV(zd=zds[i],zs=zss[i],mstar=10.**mstars[i],mhalo=10.**mhalos[i],reff_phys = reffs[i],cvir=10.**logcvirs[i])
+        lens.normalize()
+        lens.get_caustic()
+
+        ysource = (np.random.rand(1))**0.5*lens.caustic
+
+        lens.source = ysource
+        lens.get_images()
+        lens.get_radmag_ratio()
+
+        lens.get_rein()
+
+        imerrs = np.random.normal(0.,imerr,2)
+        lens.obs_images = ((lens.images[0] + imerrs[0],lens.images[1] + imerrs[1]),imerr)
+        lens.obs_lmstar = (mstars_meas[i],mstar_err)
+        lens.obs_radmagrat = (lens.radmag_ratio + radmagrat_errs[i],radmagrat_err)
+
+        if lens.images is None:
+            df
+
+        lenses.append(lens)
+
+    f = open(outname,'w')
+    pickle.dump(lenses,f)
+    f.close()
+
+
 
 def om10_to_spherical_cows(Nlens=1000,maglim=23.3,IQ=0.75):
 
@@ -147,6 +408,7 @@ def very_simple(Nlens=1000,mmu=11.5,msig=0.3,mdm5_0=10.8,mdm5_sig=0.1,logreff_0=
 
         lens.source = ysource
         lens.get_images()
+        lens.get_rein()
         lens.get_radmag_ratio()
 
         if lens.images is None:
@@ -159,5 +421,6 @@ def very_simple(Nlens=1000,mmu=11.5,msig=0.3,mdm5_0=10.8,mdm5_sig=0.1,logreff_0=
     f = open(outname,'w')
     pickle.dump((lenses,mstar_sample,radmagrat_sample),f)
     f.close()
+
 
 

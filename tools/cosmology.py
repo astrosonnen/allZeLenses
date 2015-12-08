@@ -1,7 +1,9 @@
 import numpy
 from numpy import *
 from scipy import integrate
-from sonnentools.cgsconstants import *
+from cgsconstants import *
+
+Delta = 93.5
 
 def Hz(z,H0=70.,omegaM=0.3,omegaL=0.7,omegar=0.):
     omegak = 1 - omegaM - omegaL - omegar
