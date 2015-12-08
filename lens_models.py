@@ -193,6 +193,77 @@ class sps:
         self.radmag_ratio = radmag_A/radmag_B
 
 
+class sps_ang:
+    
+    def __init__(self,zd=0.3,zs=2.,rein=1.,gamma=2.,kext=0.,images=[],source=0.):
+        self.zd = zd
+        self.zs = zs
+        self.rein = rein
+        self.gamma = gamma
+        self.kext = kext
+        self.caustic = None
+        self.radcrit = None
+        self.source = source
+        self.images = images
+        self.timedelay = None
+        self.grids = None
+        self.radmag_ratio = None
+
+        self.arcsec2kpc = cgs.arcsec2rad*cosmology.Dang(self.zd)/cgs.kpc
+        self.Dt = cosmology.Dang(self.zd)*cosmology.Dang(self.zs)/cosmology.Dang(self.zd,self.zs)/cgs.c*(1. + self.zd)/cgs.c
+ 
+    def kappa(self,x):
+        return (3. - self.gamma)/2.*abs(x/self.rein)**(1.-self.gamma)
+
+    def m(self,x):
+        return self.rein**2*(abs(x)/self.rein)**(3.-self.gamma) + self.kext*x**2
+
+    def lenspot(self,r):
+        return self.rein**2/(3.-self.gamma)*(abs(x)/self.rein)**(3.-self.gamma) + 0.5*self.kext*r**2
+
+    def alpha(self,x):
+        r = abs(x)
+        return self.m(x)/x + self.kext*x
+
+    def get_caustic(self):
+
+        rmin = 0.01
+        rmax = 10.
+
+        radial_invmag = lambda r: 2.*self.kappa(r) - self.m(r)/r**2 - 1.
+
+        if radial_invmag(rmin)*radial_invmag(rmax) > 0.:
+            rcrit = rmin
+        else:
+            rcrit = brentq(radial_invmag,rmin,rmax)
+
+        ycaust = -(rcrit - self.alpha(rcrit))
+        self.caustic = ycaust
+        self.radcrit = rcrit
+
+
+    def get_images(self):
+
+        rmin = 0.01
+        rmax = 10.
+
+        imageeq = lambda r: r - self.alpha(r) - self.source
+        if imageeq(self.radcrit)*imageeq(rmax) >= 0. or imageeq(-rmax)*imageeq(-self.radcrit) >=0.:
+            self.images = []
+        else:
+            xA = brentq(imageeq,self.radcrit,rmax,xtol=1e-4)
+            xB = brentq(imageeq,-rmax,-self.radcrit,xtol=1e-4)
+            self.images = [xA,xB]
+
+    def get_time_delay(self):
+        self.timedelay = -self.Dt*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + self.images[1]*self.source - self.lenspot(self.images[0]) + self.lenspot(-self.images[1]))
+
+    def get_radmag_ratio(self):
+        radmag_A = (1. + self.m(self.images[0])/self.images[0]**2 - 2.*self.kappa(self.images[0]))**(-1)
+        radmag_B = (1. + self.m(self.images[1])/self.images[1]**2 - 2.*self.kappa(self.images[1]))**(-1)
+        self.radmag_ratio = radmag_A/radmag_B
+
+
 class spherical_cow:
     
     def __init__(self,zd=0.3,zs=2.,mstar=1e11,mdm5=1e11,reff_phys=1.,n=4.,rs_phys=50.,gamma=1.,kext=0.,images=[],source=0.,obs_images=None,obs_lmstar=None,obs_radmagrat=None):

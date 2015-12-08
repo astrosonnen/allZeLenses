@@ -1718,5 +1718,128 @@ def emcee_spherical_cow(lens,mstar_meas,radmagrat_meas,N=11000,burnin=1000,nwalk
 
 
 
+def fit_sps(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sphere model to image position and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+
+    approx_rein = 0.5*(lens.images[0] - lens.images[1])
+
+    model_lens = lens_models.sps(zd=lens.zd,zs=lens.zs,rein=approx_rein,images=lens.images,source=lens.source)
+
+    model_lens.normalize()
+
+    xA,xB = lens.images
+    xA_obs,xB_obs = lens.obs_images[0]
+    imerr = lens.obs_images[1]
+
+    mstar_obs,mstar_err = lens.obs_lmstar
+    radmagrat_obs,radmagrat_err = lens.obs_radmagrat
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr,nsig=5.)
+
+
+    mstar_var = pymc.Uniform('lmstar',lower=10.5,upper=12.5,value=np.log10(lens.mstar))
+    mhalo_var = pymc.Uniform('mhalo',lower=11.,upper=14.5,value=np.log10(lens.mhalo))
+    c_var = pymc.Uniform('lcvir',lower=0.,upper=10.,value=np.log10(lens.cvir))
+
+    @pymc.deterministic()
+    def caustic(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var):
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**lcvir
+
+        model_lens.normalize()
+
+        model_lens.get_caustic()
+
+        return model_lens.caustic
+
+    s2_var = pymc.Uniform('s2',lower=0.,upper=caustic**2,value=lens.source**2)
+
+    @pymc.deterministic()
+    def imageA(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**lcvir
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+        if len(model_lens.images) < 2:
+            return np.inf
+        else:
+            return model_lens.images[0]
+
+
+    @pymc.deterministic()
+    def imageB(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**lcvir
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+        if len(model_lens.images) < 2:
+            return -np.inf
+        else:
+            return model_lens.images[1]
+
+    @pymc.deterministic()
+    def radmag_ratio(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**lcvir
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+
+        if len(model_lens.images)<2:
+            return 0.
+        else:
+            model_lens.get_radmag_ratio()
+            return float(model_lens.radmag_ratio)
+
+
+    @pymc.deterministic()
+    def timedelay(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**lcvir
+
+        model_lens.normalize()
+
+        model_lens.fast_images()
+        if len(model_lens.images) < 2:
+            return 0.
+        else:
+            model_lens.get_time_delay()
+            return model_lens.timedelay
+
+
+    imA_logp = pymc.Normal('imA_logp',mu=imageA,tau=1./imerr**2,value=xA_obs,observed=True)
+    imB_logp = pymc.Normal('imB_logp',mu=imageB,tau=1./imerr**2,value=xB_obs,observed=True)
+
+    #mstar_logp = pymc.Normal('mstar_logp',mu=mstar_var,tau=1./mstar_err**2,value=mstar_obs,observed=True)
+
+    radmagrat_logp = pymc.Normal('radmagrat_logp',mu=radmag_ratio,tau=1./radmagrat_err**2,value=radmagrat_obs,observed=True)
+
+    pars = [mstar_var,mhalo_var,c_var,s2_var,timedelay,radmag_ratio,imageA,imageB]
+
+    M = pymc.MCMC(pars)
+    M.use_step_method(pymc.AdaptiveMetropolis,[mstar_var,mhalo_var,c_var,s2_var])
+    M.isample(N,burnin,thin=thin)
+
+    outdic = {'mstar':M.trace('lmstar')[:],'mhalo':M.trace('mhalo')[:],'lcvir':M.trace('lcvir')[:],'timedelay':M.trace('timedelay')[:],'source':M.trace('s2')[:]**0.5,'imageA':M.trace('imageA')[:],'imageB':M.trace('imageB')[:],'radmagrat':M.trace('radmag_ratio')[:]}
+
+    return outdic
 
 
