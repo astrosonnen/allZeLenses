@@ -1720,7 +1720,7 @@ def fit_sps_ang(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sph
 
     approx_rein = 0.5*(lens.images[0] - lens.images[1])
 
-    model_lens = lens_models.sps(zd=lens.zd,zs=lens.zs,rein=approx_rein,images=lens.images)
+    model_lens = lens_models.sps_ang(zd=lens.zd,zs=lens.zs,rein=approx_rein,images=lens.images)
 
     xA,xB = lens.images
     xA_obs,xB_obs = lens.obs_images[0]
@@ -1731,6 +1731,9 @@ def fit_sps_ang(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sph
     approx_source = 0.5*(sA + sB)
 
     model_lens.source = max(0.1, approx_source)
+    model_lens.get_images()
+    print model_lens.images
+    df
 
     radmagrat_obs,radmagrat_err = lens.obs_radmagrat
 
@@ -1753,25 +1756,18 @@ def fit_sps_ang(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sph
 
 
     @pymc.deterministic()
-    def radmag_ratio(rein=rein_var, gamma=gamma_var, s2=s2_var):
-
-        model_lens.source = s2**0.5
-        model_lens.rein = rein
-        model_lens.gamma = gamma
+    def radmag_ratio(imgs=images):
 
 	if imgs[0] < 0.:
             return 0.
         else:
             model_lens.get_radmag_ratio()
+	    print model_lens.radmag_ratio, 'cazzo', imgs
             return float(model_lens.radmag_ratio)
 
 
     @pymc.deterministic()
-    def timedelay(rein=rein_var, gamma=gamma_var, s2=s2_var):
-
-        model_lens.source = s2**0.5
-        model_lens.rein = rein
-        model_lens.gamma = gamma
+    def timedelay(imgs=images):
 
 	if imgs[0] < 0.:
             return 0.
@@ -1784,14 +1780,14 @@ def fit_sps_ang(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sph
 	if imgs[0] > 0:
 	    return imgs[0]
 	else:
-	    return 1e300
+	    return 1e30
 
     @pymc.deterministic
     def imageB(imgs=images):
 	if imgs[1] < 0:
 	    return imgs[1]
 	else:
-	    return -1e300
+	    return -1e30
 
 
     imA_logp = pymc.Normal('imA_logp',mu=imageA,tau=1./imerr**2,value=xA_obs,observed=True)

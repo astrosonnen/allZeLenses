@@ -12,6 +12,7 @@ from allZeLenses.tools import cgsconstants as cgs, cosmology
 
 #norm is the total mass of the spherical equivalent profile.
 
+eps = 1e-15
 
 class sersic:
     
@@ -218,8 +219,8 @@ class sps_ang:
     def m(self,x):
         return self.rein**2*(abs(x)/self.rein)**(3.-self.gamma) + self.kext*x**2
 
-    def lenspot(self,r):
-        return self.rein**2/(3.-self.gamma)*(abs(x)/self.rein)**(3.-self.gamma) + 0.5*self.kext*r**2
+    def lenspot(self,x):
+        return self.rein**2/(3.-self.gamma)*(abs(x)/self.rein)**(3.-self.gamma) + 0.5*self.kext*x**2
 
     def alpha(self,x):
         r = abs(x)
@@ -247,11 +248,10 @@ class sps_ang:
 
 	self.get_caustic()
 
-	smax = min(self.caustic, xmax)
-	if self.source < smax:
+	if self.source < min(self.caustic, xmax):
 	    imageeq = lambda r: r - self.alpha(r) - self.source
-	    xA = brentq(imageeq, self.radcrit, smax, xtol=1e-4)
-	    xB = brentq(imageeq, -smax, -self.radcrit, xtol=1e-4)
+	    xA = brentq(imageeq, self.rein, xmax, xtol=1e-4)
+	    xB = brentq(imageeq, -self.rein, -max(self.radcrit, eps), xtol=1e-4)
 	    self.images = (xA, xB)
 	else:
 	    self.images = (-99., 99.)
