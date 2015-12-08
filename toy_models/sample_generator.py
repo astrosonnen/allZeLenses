@@ -1,6 +1,6 @@
 from allZeLenses import mass_profiles,tools,lens_models
-import os,om10
-from om10 import make_twocomp_lenses
+#import os,om10
+#from om10 import make_twocomp_lenses
 import numpy as np
 from allZeLenses.mass_profiles import gNFW,sersic
 from allZeLenses.tools.distances import Dang

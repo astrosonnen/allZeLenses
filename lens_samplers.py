@@ -955,7 +955,7 @@ def fit_nfw_deV_knownimf(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model
     s2_var = pymc.Uniform('s2',lower=0.,upper=caustic**2,value=lens.source**2)
 
     @pymc.deterministic()
-    def imageA(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
+    def images(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
 
         model_lens.source = s2**0.5
         model_lens.mstar = 10.**mstar
@@ -964,64 +964,42 @@ def fit_nfw_deV_knownimf(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model
 
         model_lens.normalize()
 
-        model_lens.fast_images()
-        if len(model_lens.images) < 2:
-            return np.inf
-        else:
-            return model_lens.images[0]
+        model_lens.get_images()
+	return model_lens.images
 
 
     @pymc.deterministic()
-    def imageB(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
+    def radmag_ratio(imgs=images):
 
-        model_lens.source = s2**0.5
-        model_lens.mstar = 10.**mstar
-        model_lens.mhalo = 10.**mhalo
-        model_lens.cvir = 10.**lcvir
-
-        model_lens.normalize()
-
-        model_lens.fast_images()
-        if len(model_lens.images) < 2:
-            return -np.inf
-        else:
-            return model_lens.images[1]
-
-    @pymc.deterministic()
-    def radmag_ratio(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
-
-        model_lens.source = s2**0.5
-        model_lens.mstar = 10.**mstar
-        model_lens.mhalo = 10.**mhalo
-        model_lens.cvir = 10.**lcvir
-
-        model_lens.normalize()
-
-        model_lens.fast_images()
-
-        if len(model_lens.images)<2:
-            return 0.
+        if imgs[0] < 0.:
+            return -1e300
         else:
             model_lens.get_radmag_ratio()
             return float(model_lens.radmag_ratio)
 
 
     @pymc.deterministic()
-    def timedelay(mstar=mstar_var,mhalo=mhalo_var,lcvir=c_var,s2=s2_var):
+    def timedelay(imgs=images):
 
-        model_lens.source = s2**0.5
-        model_lens.mstar = 10.**mstar
-        model_lens.mhalo = 10.**mhalo
-        model_lens.cvir = 10.**lcvir
-
-        model_lens.normalize()
-
-        model_lens.fast_images()
-        if len(model_lens.images) < 2:
-            return 0.
+        if imgs[0] < 0.:
+            return -1e300
         else:
             model_lens.get_time_delay()
             return model_lens.timedelay
+
+    @pymc.deterministic()
+    def imageA(imgs=images):
+	if imgs[0] < 0.:
+	    return -1e300
+	else:
+	    return imgs[0]
+
+    @pymc.deterministic()
+    def imageB(imgs=images):
+	if imgs[1] > 0.:
+	    return 1e300
+	else:
+	    return imgs[1]
 
 
     imA_logp = pymc.Normal('imA_logp',mu=imageA,tau=1./imerr**2,value=xA_obs,observed=True)
@@ -1802,6 +1780,6 @@ def fit_sps_ang(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sph
 
     outdic = {'rein':M.trace('rein')[:],'gamma':M.trace('gamma')[:],'timedelay':M.trace('timedelay')[:],'source':M.trace('s2')[:]**0.5,'imageA':M.trace('imageA')[:],'imageB':M.trace('imageB')[:],'radmagrat':M.trace('radmag_ratio')[:]}
 
-    return outdic
+    return outdic, model_lens
 
 

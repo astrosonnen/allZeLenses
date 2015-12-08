@@ -676,7 +676,7 @@ class nfw_deV:
 
     def get_caustic(self):
 
-        rmin = self.rs/500.
+        rmin = self.reff/50.
         rmax = 10.*self.reff
 
         radial_invmag = lambda r: 2.*self.kappa(r) - self.m(r)/r**2 - 1.
@@ -697,23 +697,26 @@ class nfw_deV:
 
         tangential_invmag = lambda r: self.m(r)/r**2 - 1.
 
-        tcrit = brentq(tangential_invmag,-self.images[1],self.images[0])
+        #tcrit = brentq(tangential_invmag,-self.images[1],self.images[0])
+        tcrit = brentq(tangential_invmag, self.reff/50., 10.*self.reff)
 
         self.rein = tcrit
 
 
     def get_images(self):
 
-        rmin = self.rs/500.
+        rmin = self.reff/50.
         rmax = 10.*self.reff
+
+	#self.get_rein()
 
         imageeq = lambda r: r - self.alpha(r) - self.source
         if imageeq(self.radcrit)*imageeq(rmax) >= 0. or imageeq(-rmax)*imageeq(-self.radcrit) >=0.:
-            self.images = []
+            self.images = (-99., 99.)
         else:
-            xA = brentq(imageeq,self.radcrit,rmax,xtol=1e-4)
-            xB = brentq(imageeq,-rmax,-self.radcrit,xtol=1e-4)
-            self.images = [xA,xB]
+            xA = brentq(imageeq, rmin, rmax, xtol=1e-4)
+            xB = brentq(imageeq, -rmax, -self.radcrit, xtol=1e-4)
+            self.images = (xA, xB)
 
 
     def get_time_delay(self):
