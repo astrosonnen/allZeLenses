@@ -230,30 +230,32 @@ class sps_ang:
         rmin = 0.01
         rmax = 10.
 
-        radial_invmag = lambda r: 2.*self.kappa(r) - self.m(r)/r**2 - 1.
+	if self.gamma > 2.:
+	    self.caustic = np.inf
+	    self.radcrit = 0.
 
-        if radial_invmag(rmin)*radial_invmag(rmax) > 0.:
-            rcrit = rmin
-        else:
-            rcrit = brentq(radial_invmag,rmin,rmax)
+	elif self.gamma == 2.:
+	    self.caustic = self.rein
+	    self.radcrit = 0.
 
-        ycaust = -(rcrit - self.alpha(rcrit))
-        self.caustic = ycaust
-        self.radcrit = rcrit
+	else:
+	    self.radcrit = self.rein*(1./(2.-self.gamma))**(1./(1.-self.gamma))
+	    self.caustic = -(self.radcrit - self.alpha(self.radcrit))
 
 
-    def get_images(self):
+    def get_images(self, xmax=10.):
 
-        rmin = 0.01
-        rmax = 10.
+	self.get_caustic()
 
-        imageeq = lambda r: r - self.alpha(r) - self.source
-        if imageeq(self.radcrit)*imageeq(rmax) >= 0. or imageeq(-rmax)*imageeq(-self.radcrit) >=0.:
-            self.images = []
-        else:
-            xA = brentq(imageeq,self.radcrit,rmax,xtol=1e-4)
-            xB = brentq(imageeq,-rmax,-self.radcrit,xtol=1e-4)
-            self.images = [xA,xB]
+	smax = min(self.caustic, xmax)
+	if self.source < smax:
+	    imageeq = lambda r: r - self.alpha(r) - self.source
+	    xA = brentq(imageeq, self.radcrit, smax, xtol=1e-4)
+	    xB = brentq(imageeq, -smax, -self.radcrit, xtol=1e-4)
+	    self.images = (xA, xB)
+	else:
+	    self.images = (-99., 99.)
+
 
     def get_time_delay(self):
         self.timedelay = -self.Dt*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + self.images[1]*self.source - self.lenspot(self.images[0]) + self.lenspot(-self.images[1]))
