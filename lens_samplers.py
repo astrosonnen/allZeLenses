@@ -1732,8 +1732,6 @@ def fit_sps_ang(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sph
 
     model_lens.source = max(0.1, approx_source)
     model_lens.get_images()
-    print model_lens.images
-    df
 
     radmagrat_obs,radmagrat_err = lens.obs_radmagrat
 
@@ -1762,7 +1760,6 @@ def fit_sps_ang(lens,N=11000,burnin=1000,thin=1): #fits a singular power-law sph
             return 0.
         else:
             model_lens.get_radmag_ratio()
-	    print model_lens.radmag_ratio, 'cazzo', imgs
             return float(model_lens.radmag_ratio)
 
 
