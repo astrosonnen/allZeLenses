@@ -357,17 +357,17 @@ class sps_ein_break: #spherical power-law with a break at the Einstein radius
         self.Dt = cosmology.Dang(self.zd)*cosmology.Dang(self.zs)/cosmology.Dang(self.zd,self.zs)/cgs.c*(1. + self.zd)/cgs.c
  
     def const(self):
-	return (2.**(self.beta - 1.)*(2. + self.beta/(3. - self.gamma)))**(-1)
+	return (2.**(-self.beta - 1.)*(2. - self.beta/(3. - self.gamma)))**(-1)
 
     def kappa(self,x):
-	stuff = self.beta*(self.beta - 1.)/(3. - self.gamma)*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein)**(self.beta - 2.) + self.beta*(2. + 1./(3. - self.gamma))*(abs(x)/self.rein)**(2. - self.gamma)*(1. + abs(x)/self.rein)**(self.beta - 1.) + (3. - self.gamma)*(1. + abs(x)/self.rein)**self.beta*(abs(x)/self.rein)**(1. - self.gamma)
+	stuff = -self.beta*(-self.beta - 1.)/(3. - self.gamma)*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein)**(-self.beta - 2.) - self.beta*(2. + 1./(3. - self.gamma))*(abs(x)/self.rein)**(2. - self.gamma)*(1. + abs(x)/self.rein)**(-self.beta - 1.) + (3. - self.gamma)*(1. + abs(x)/self.rein)**(-self.beta)*(abs(x)/self.rein)**(1. - self.gamma)
         return 0.5*stuff*self.const()
 
     def m(self,x):
-        return self.const()*self.rein**2*(1. + abs(x)/self.rein)**(self.beta - 1.)*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein + self.beta/(3. - self.gamma)*abs(x)/self.rein)
+        return self.const()*self.rein**2*(1. + abs(x)/self.rein)**(-self.beta - 1.)*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein - self.beta/(3. - self.gamma)*abs(x)/self.rein)
 
     def lenspot(self,x):
-        return self.const()/(3. - self.gamma)*self.rein**2*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein)**self.beta
+        return self.const()/(3. - self.gamma)*self.rein**2*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein)**(-self.beta)
 
     def alpha(self,x):
         return self.m(x)/x
@@ -1312,7 +1312,8 @@ class sps_deV:
 
 class nfw_sersic:
     
-    def __init__(self,zd=0.3,zs=2.,mstar=1e11,mhalo=1e13,reff_phys=1.,n=4.,cvir=5.,images=[],source=0.,obs_images=None,obs_lmstar=None,obs_radmagrat=None,Delta_halo=93.5):
+    def __init__(self,zd=0.3,zs=2.,mstar=1e11,mhalo=1e13,reff_phys=1.,n=4.,cvir=5.,images=[],source=0., \
+                 obs_images=None,obs_lmstar=None,obs_radmagrat=None,Delta_halo=93.5, h=0.7):
         self.zd = zd
         self.zs = zs
         self.bulge = None
@@ -1340,12 +1341,12 @@ class nfw_sersic:
         self.obs_radmagrat = obs_radmagrat
         self.obs_images = obs_images
 
-        self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*cosmology.Dang(0.,self.zs)*cosmology.Dang(0.,self.zd)/cosmology.Dang(self.zd,self.zs)/cgs.M_Sun*cgs.arcsec2rad**2
-        self.arcsec2kpc = cgs.arcsec2rad*cosmology.Dang(self.zd)/cgs.kpc
+        self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*cosmology.Dang(0.,self.zs, H0=h*100.)*cosmology.Dang(0.,self.zd, H0=h*100.)/cosmology.Dang(self.zd,self.zs, H0=h*100.)/cgs.M_Sun*cgs.arcsec2rad**2
+        self.arcsec2kpc = cgs.arcsec2rad*cosmology.Dang(self.zd, H0=h*100.)/cgs.kpc
         self.reff = self.reff_phys/self.arcsec2kpc
         self.cvir = cvir
-        self.Dt = cosmology.Dang(self.zd)*cosmology.Dang(self.zs)/cosmology.Dang(self.zd,self.zs)/cgs.c*(1. + self.zd)/cgs.c
-        self.rhoc = cosmology.rhoc(self.zd)
+        self.Dt = cosmology.Dang(self.zd, H0=h*100.)*cosmology.Dang(self.zs, H0=h*100.)/cosmology.Dang(self.zd,self.zs, H0=h*100.)/cgs.c*(1. + self.zd)/cgs.c
+        self.rhoc = cosmology.rhoc(self.zd, H0=h*100.)
  
     def normalize(self):
         self.rvir = (self.mhalo*cgs.M_Sun*3./self.Delta_halo/(4.*np.pi)/self.rhoc)**(1/3.)/cgs.kpc/self.arcsec2kpc
