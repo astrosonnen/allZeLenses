@@ -207,7 +207,9 @@ def draw_sigma_given_mu(mu, sample):
             psigma[j] = np.exp((-0.5*(mu - sample)**2/sig[j]**2 - np.log(sig[j])).sum())
         return psigma
 
-    spline = splrep(sigma_grid, p_sig_given_mu(sigma_grid))
+    psigma_grid = p_sig_given_mu(sigma_grid)
+    psigma_grid[psigma_grid != psigma_grid] = 0.
+    spline = splrep(sigma_grid, psigma_grid)
 
     def intfunc(sig):
         return splint(sigma_grid[0], sig, spline)
@@ -244,8 +246,8 @@ def hierarchical_gibbs_sampling_knownimf_nocvirscat(lenses, nstep=1000):
 
     for i in range(nlens):
         s_ind[i] = lenses[i].source
-        mhalo_ind[i] = lenses[i].mhalo
-        mstar_ind[i] = lenses[i].mstar
+        mhalo_ind[i] = np.log10(lenses[i].mhalo)
+        mstar_ind[i] = np.log10(lenses[i].mstar)
         dt_unith_ind[i] = lenses[i].timedelay*h70
         dt_obs[i] = lenses[i].obs_timedelay[0]
         dt_errs[i] = lenses[i].obs_timedelay[1]

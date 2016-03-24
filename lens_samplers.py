@@ -1,9 +1,6 @@
-import mass_profiles, allZeTools, lens_models
-import os,om10
+import lens_models
 import numpy as np
 import pymc
-import pickle
-#import emcee
 
 day = 24.*3600.
 
