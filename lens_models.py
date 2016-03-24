@@ -112,7 +112,7 @@ class NfwDev:
             xb = brentq(imageeq, -rmax, -self.radcrit, xtol=1e-4)
             self.images = (xa, xb)
 
-    def get_time_delay(self):
+    def get_timedelay(self):
         self.timedelay = -self.Dt*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + \
                                    self.images[1]*self.source - self.lenspot(self.images[0]) + \
                                    self.lenspot(-self.images[1]))/self.h70
