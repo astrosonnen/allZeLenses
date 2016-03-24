@@ -1,21 +1,125 @@
-from allZeLenses import mass_profiles,tools,lens_models
+import mass_profiles, allZeTools, lens_models
 import os,om10
-from om10 import make_twocomp_lenses
 import numpy as np
-from allZeLenses.mass_profiles import gNFW,sersic
-from allZeLenses.tools.distances import Dang
-from allZeLenses.tools import cgsconstants
-from scipy.optimize import brentq
-from scipy.misc import derivative
 import pymc
 import pickle
 #import emcee
 
 day = 24.*3600.
 
-def fit_nfw_deV(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+def fit_impos_timedelay_mstar_fixedc_knownimf(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+
+    model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
+                                    reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
+
+    model_lens.normalize()
+
+    xA,xB = lens.images
+    xA_obs,xB_obs = lens.obs_images[0]
+    imerr = lens.obs_images[1]
+
+    mstar_obs,mstar_err = lens.obs_lmstar
+    dt_obs, dt_err = lens.obs_timedelay
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr,nsig=5.)
+
+
+    mstar_var = pymc.Uniform('lmstar',lower=10.5,upper=12.5,value=np.log10(lens.mstar))
+    mhalo_var = pymc.Uniform('mhalo',lower=12.,upper=14.,value=np.log10(lens.mhalo))
+    h70_var = pymc.Uniform('h70', lower=0.5, upper=1.5, value=1.)
+
+    @pymc.deterministic()
+    def caustic(mstar=mstar_var,mhalo=mhalo_var):
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**(0.971-0.094*(mhalo-12.))
+
+        model_lens.normalize()
+
+        model_lens.get_caustic()
+
+        return model_lens.caustic
+
+    s2_var = pymc.Uniform('s2',lower=0.,upper=caustic**2,value=lens.source**2)
+
+    @pymc.deterministic()
+    def imageA(mstar=mstar_var,mhalo=mhalo_var,s2=s2_var):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**(0.971-0.094*(mhalo-12.))
+
+        model_lens.normalize()
+
+        model_lens.get_images()
+        if len(model_lens.images) < 2:
+            return -1e300
+        else:
+            return model_lens.images[0]
+
+
+    @pymc.deterministic()
+    def imageB(mstar=mstar_var,mhalo=mhalo_var,s2=s2_var):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**(0.971-0.094*(mhalo-12.))
+
+        model_lens.normalize()
+
+        model_lens.get_images()
+        if len(model_lens.images) < 2:
+            return -1e300
+        else:
+            return model_lens.images[1]
+
+
+    @pymc.deterministic()
+    def timedelay(mstar=mstar_var,mhalo=mhalo_var,s2=s2_var, h70=h70_var):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = 10.**(0.971-0.094*(mhalo-12.))
+        model_lens.h70 = h70
+
+        model_lens.normalize()
+
+        model_lens.get_images()
+        if len(model_lens.images) < 2:
+            return 0.
+        else:
+            model_lens.get_time_delay()
+            return model_lens.timedelay
+
+
+    imA_logp = pymc.Normal('imA_logp',mu=imageA,tau=1./imerr**2,value=xA_obs,observed=True)
+    imB_logp = pymc.Normal('imB_logp',mu=imageB,tau=1./imerr**2,value=xB_obs,observed=True)
+
+    mstar_logp = pymc.Normal('mstar_logp',mu=mstar_var,tau=1./mstar_err**2,value=mstar_obs,observed=True)
+
+    timedelay_logp = pymc.Normal('timedelay_logp',mu=timedelay,tau=1./dt_err**2,value=dt_obs,observed=True)
+
+    pars = [mstar_var, mhalo_var, h70_var, s2_var, timedelay, imageA, imageB, caustic]
+
+    M = pymc.MCMC(pars)
+    M.use_step_method(pymc.AdaptiveMetropolis,[mstar_var,mhalo_var,h70_var,s2_var])
+    M.sample(N,burnin,thin=thin)
+
+    outdic = {'mstar':M.trace('lmstar')[:], 'mhalo':M.trace('mhalo')[:], 'h70':M.trace('h70')[:], \
+              'timedelay':M.trace('timedelay')[:], 'source':M.trace('s2')[:]**0.5, 'imageA':M.trace('imageA')[:], \
+              'imageB':M.trace('imageB')[:], 'caustic': M.trace('caustic')[:]}
+
+    return outdic
+
+
+def fit_NfwDev(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -136,9 +240,9 @@ def fit_nfw_deV(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image
     return outdic
 
 
-def fit_nfw_deV_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -259,9 +363,9 @@ def fit_nfw_deV_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model t
     return outdic
 
 
-def fit_nfw_deV_fixedc(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_fixedc(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -382,9 +486,9 @@ def fit_nfw_deV_fixedc(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model t
     return outdic
 
 
-def fit_nfw_deV_fixedc_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_fixedc_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -505,9 +609,9 @@ def fit_nfw_deV_fixedc_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+de
     return outdic
 
 
-def fit_nfw_deV_cprior_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_cprior_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -628,11 +732,11 @@ def fit_nfw_deV_cprior_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+de
     return outdic
 
 
-def fit_nfw_deV_fixedc_rein(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_fixedc_rein(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
     from scipy.optimize import brentq
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -685,11 +789,11 @@ def fit_nfw_deV_fixedc_rein(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV mo
     return outdic
 
 
-def grid_nfw_deV_fixedc_rein(lens,N=11000,burnin=1000,thin=1,Ngrid=101): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def grid_NfwDev_fixedc_rein(lens,N=11000,burnin=1000,thin=1,Ngrid=101): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
     from scipy.optimize import brentq
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -729,11 +833,11 @@ def grid_nfw_deV_fixedc_rein(lens,N=11000,burnin=1000,thin=1,Ngrid=101): #fits a
     return grid
 
 
-def fit_nfw_deV_alpha_cprior_rein(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_alpha_cprior_rein(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
     from scipy.optimize import brentq
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -793,9 +897,9 @@ def fit_nfw_deV_alpha_cprior_rein(lens,N=11000,burnin=1000,thin=1): #fits a nfw+
     return outdic
 
 
-def fit_nfw_deV_alpha_cprior_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_alpha_cprior_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -921,9 +1025,9 @@ def fit_nfw_deV_alpha_cprior_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a 
     return outdic
 
 
-def fit_nfw_deV_knownimf(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_knownimf(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -1044,9 +1148,9 @@ def fit_nfw_deV_knownimf(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model
     return outdic
 
 
-def fit_nfw_deV_knownimf_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_knownimf_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -1167,9 +1271,9 @@ def fit_nfw_deV_knownimf_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+de
     return outdic
 
 
-def fit_nfw_deV_knownimf_fixedc_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_knownimf_fixedc_noradmag(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -1293,9 +1397,9 @@ def fit_nfw_deV_knownimf_fixedc_noradmag(lens,N=11000,burnin=1000,thin=1): #fits
     return outdic
 
 
-def fit_nfw_deV_knownimf_fixedc_light(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_knownimf_fixedc_light(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -1366,9 +1470,9 @@ def fit_nfw_deV_knownimf_fixedc_light(lens,N=11000,burnin=1000,thin=1): #fits a 
     return outdic
 
 
-def fit_nfw_deV_knownimf_fixedc(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_knownimf_fixedc(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 
@@ -1494,9 +1598,9 @@ def fit_nfw_deV_knownimf_fixedc(lens,N=11000,burnin=1000,thin=1): #fits a nfw+de
 
 
 
-def fit_nfw_deV_knownmstar_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
+def fit_NfwDev_knownmstar_cprior(lens,N=11000,burnin=1000,thin=1): #fits a nfw+deV model to image position, stellar mass and radial magnification ratio data. Does NOT fit the time-delay (that's done later in the hierarchical inference step).
 
-    model_lens = lens_models.nfw_deV(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
+    model_lens = lens_models.NfwDev(zd=lens.zd,zs=lens.zs,mstar=lens.mstar,mhalo=lens.mhalo,reff_phys=lens.reff_phys,cvir=lens.cvir,images=lens.images,source=lens.source)
 
     model_lens.normalize()
 

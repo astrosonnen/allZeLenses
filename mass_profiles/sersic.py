@@ -7,7 +7,7 @@ from scipy.integrate import quad
 from scipy.interpolate import splrep
 import os
 
-grid_dir = '/gdrive/projects/allZeLenses/'
+grid_dir = '/gdrive/working_dir/allZeLenses/'
 
 def b(n):
     return 2*n - 1./3. + 4/405./n + 46/25515/n**2

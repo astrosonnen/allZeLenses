@@ -8,7 +8,7 @@ from scipy.interpolate import splrep
 
 rsgrid = 50.
 
-grid_dir = '/gdrive/projects/allZeLenses/'
+grid_dir = '/gdrive/working_dir/allZeLenses/'
 
 
 def rho(r,rs,beta):
