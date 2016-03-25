@@ -1,3 +1,4 @@
+# LaTeX cruft:
 *.pdf
 *.dvi
 *.log
@@ -7,3 +8,7 @@
 *.bbl
 *.blg
 *.ps
+
+# Python cruft:
+.ipynb_checkpoints
+*.pyc
