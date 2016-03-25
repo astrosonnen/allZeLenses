@@ -76,7 +76,7 @@ def infer_simple_reality_nocosmo(mock, chains, nstep=11000, burnin=1000, nis=100
     return outdic
 
 
-def infer_simple_reality_knownimf_nocosmo(mock, chains, nstep=11000, burnin=1000, nis=1000):
+def infer_simple_reality_knownimf_nocosmo(mock, chains, nstep=11000, burnin=1000, thin=1):
 
     from scipy.special import erf
 
@@ -86,10 +86,11 @@ def infer_simple_reality_knownimf_nocosmo(mock, chains, nstep=11000, burnin=1000
     tchains = []
     for i in range(nlens):
         chain = chains[i]
-        samp = np.random.choice(np.arange(len(chain)), nis)
 
         for par in chain:
-            chain[par] = chain[par].flatten()[samp]
+            nsamp = len(chain[par])
+            keep = thin*np.arange(nsamp/thin)
+            chain[par] = chain[par].flatten()[keep]
 
         tchains.append(chain)
 
@@ -141,4 +142,74 @@ def infer_simple_reality_knownimf_nocosmo(mock, chains, nstep=11000, burnin=1000
     outdic['logp'] = M.trace('like')[:]
 
     return outdic
+
+
+def infer_simple_reality_knownimf_nocosmo_analytic(mock, mhalo, err_mhalo, mstar, err_mstar, nstep=11000, burnin=1000):
+
+    nlens = len(mhalo)
+
+    #defines the hyper-parameters
+
+    truth = mock['truth']
+
+    mhalo_mu = pymc.Uniform('mhalo_mu', lower=12.0, upper=14.0, value=truth['mhalo_mu'])
+    mhalo_sig = pymc.Uniform('mhalo_sig', lower=0., upper=1., value=truth['mhalo_sig'])
+
+    mstar_mhalo = pymc.Uniform('mstar_mhalo', lower=0., upper=2., value=truth['mstar_mhalo'])
+
+    mstar_mu = pymc.Uniform('mstar_mu', lower=11., upper=12., value=truth['mstar_mu'])
+    mstar_sig = pymc.Uniform('mstar_sig', lower=0., upper=2., value=truth['mstar_sig'])
+
+    pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig]
+
+    @pymc.deterministic(name='like')
+    def like(mhalo_mu=mhalo_mu, mhalo_sig=mhalo_sig, mstar_mhalo=mstar_mhalo, mstar_mu=mstar_mu, mstar_sig=mstar_sig):
+
+        totlike = 0.
+
+        from scipy.integrate import dblquad
+
+        for i in range(nlens):
+
+            err_arr = np.array((err_mhalo[i], err_mstar[i]))
+
+            obs_mu = np.array((mhalo[i], mstar[i]))
+            obs_cov = np.diag(err_arr**2)
+            obs_invcov = np.diag(err_arr**-2)
+
+            pri_mu = np.array((mhalo_mu, mstar_mu + mstar_mhalo*(mhalo_mu - 13.)))
+            pri_cov = np.array(((mhalo_sig**2, mstar_mhalo*mhalo_sig**2), (mstar_mhalo*mhalo_sig**2, mstar_sig**2 + \
+                                                                           mstar_mhalo**2*mhalo_sig**2)))
+            pri_invcov = 1./np.linalg.det(pri_cov)*np.array(((pri_cov[1, 1], -pri_cov[0, 1]), \
+                                                             (-pri_cov[1, 0], pri_cov[0, 0])))
+
+            prod_invcov = obs_invcov + pri_invcov
+            prod_cov = 1./np.linalg.det(prod_invcov)*np.array(((prod_invcov[1, 1], -prod_invcov[0, 1]), \
+                                                             (-prod_invcov[1, 0], prod_invcov[0, 0])))
+            prod_mu = np.dot(prod_cov, np.dot(obs_invcov, obs_mu)) + np.dot(prod_cov, np.dot(pri_invcov, pri_mu))
+
+            zc = (2.*np.pi)*np.linalg.det(prod_cov)**0.5*np.linalg.det(obs_cov)**-0.5*np.linalg.det(pri_cov)**-0.5* \
+                 np.exp(-0.5*(np.dot(obs_mu.T, np.dot(obs_invcov, obs_mu)) + \
+                              np.dot(pri_mu.T, np.dot(pri_invcov, pri_mu)) - \
+                              np.dot(prod_mu.T, np.dot(prod_invcov, prod_mu))))
+
+            totlike += np.log(zc)
+
+        return totlike
+
+    @pymc.stochastic(observed=True, name='logp')
+    def logp(value=0., p=pars):
+        return like
+
+    M = pymc.MCMC(pars+[like])
+    M.use_step_method(pymc.AdaptiveMetropolis, pars)
+    M.sample(nstep, burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('like')[:]
+
+    return outdic
+
 

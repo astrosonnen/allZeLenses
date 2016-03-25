@@ -276,7 +276,6 @@ def hierarchical_gibbs_sampling_knownimf_nocvirscat(lenses, nstep=1000):
         # draws a new value of the dispersion in stellar mass
         new_mstar_sig = draw_sigma_given_mu(new_mstar_mu + new_mstar_mhalo*(mhalo_ind - 13.), mstar_ind)
 
-        """
         # draws a new value of h70
         sig_invh70 = dt_errs/dt_unith_ind
         mu_invh70 = dt_obs/dt_unith_ind
@@ -293,7 +292,7 @@ def hierarchical_gibbs_sampling_knownimf_nocvirscat(lenses, nstep=1000):
 
             # defines the prior on stellar mass
             def mstar_pfunc(lmstar):
-                mu_here = new_mstar_mu - new_mstar_mhalo*(mhalo_ind[i] - 13.)
+                mu_here = new_mstar_mu + new_mstar_mhalo*(mhalo_ind[i] - 13.)
                 return 1./new_mstar_sig*np.exp(-0.5*(lmstar - mu_here)**2/new_mstar_sig**2)
 
             # draws a new value of the stellar mass
@@ -324,7 +323,6 @@ def hierarchical_gibbs_sampling_knownimf_nocvirscat(lenses, nstep=1000):
             lenses[i].get_images()
             lenses[i].get_timedelay()
             dt_unith_ind[i] = lenses[i].timedelay*new_h70
-        """
 
         # updates values of the hyperparameters
         mhalo_mu = new_mhalo_mu
@@ -342,3 +340,159 @@ def hierarchical_gibbs_sampling_knownimf_nocvirscat(lenses, nstep=1000):
         #chain['h70'][j] = h70
 
     return chain
+
+def hierarchical_gibbs_sampling_cheating(lenses, nstep=1000):
+
+    mserr = 0.1
+    mherr = 0.1
+
+    mhalo_mu = 13.
+    mhalo_sig = 0.3
+
+    mstar_mu = 11.5
+    mstar_sig = 0.1
+    mstar_mhalo = 0.8
+
+    h70 = 1.
+
+    nlens = len(lenses)
+
+    s_ind = np.zeros(nlens)
+    mhalo_ind = np.zeros(nlens)
+    mstar_ind = np.zeros(nlens)
+    dt_unith_ind = np.zeros(nlens)
+    dt_obs = np.zeros(nlens)
+    dt_errs = np.zeros(nlens)
+
+    chain = {'mhalo_mu': np.zeros(nstep), 'mhalo_sig': np.zeros(nstep), 'mstar_mu': np.zeros(nstep), \
+             'mstar_mhalo': np.zeros(nstep), 'mstar_sig': np.zeros(nstep)}
+
+    for i in range(nlens):
+        s_ind[i] = lenses[i].source
+        mhalo_ind[i] = np.log10(lenses[i].mhalo)
+        mstar_ind[i] = np.log10(lenses[i].mstar)
+
+    mstar_obs = np.random.normal(mstar_ind, mserr, nlens)
+    mhalo_obs = np.random.normal(mhalo_ind, mherr, nlens)
+
+    for j in range(nstep):
+
+        print j
+        # draws a new value of the mean halo mass
+        eff_sig = mhalo_sig/(1.*nlens)**0.5
+        eff_mu = mhalo_ind.mean()
+        new_mhalo_mu = np.random.normal(eff_mu, eff_sig, 1)
+
+        # draws a new value of the dispersion in halo mass
+        new_mhalo_sig = draw_sigma_given_mu(new_mhalo_mu, mhalo_ind)
+
+        # draws a new value of the mean stellar mass
+        eff_sig = mstar_sig/(1.*nlens)**0.5
+        eff_mu = (mstar_ind - mstar_mhalo*(mhalo_ind - 13.)).mean()
+        new_mstar_mu = np.random.normal(eff_mu, eff_sig, 1)
+
+        # draws a new value of the halo mass dependence of the stellar mass
+        eff_sig = (((mhalo_ind - 13.)**2/mstar_sig**2).sum())**(-0.5)
+        eff_mu = eff_sig**2*((mstar_ind - new_mstar_mu)/(mhalo_ind - 13.)/mstar_sig**2*(mhalo_ind - 13.)**2).sum()
+        new_mstar_mhalo = np.random.normal(eff_mu, eff_sig, 1)
+
+        # draws a new value of the dispersion in stellar mass
+        new_mstar_sig = draw_sigma_given_mu(new_mstar_mu + new_mstar_mhalo*(mhalo_ind - 13.), mstar_ind)
+
+        # loops over all ze lenses
+        for i in range(nlens):
+
+            # draws a new value of the halo mass
+            eff_sig = (1./mherr**2 + 1./new_mhalo_sig**2)**(-0.5)
+            eff_mu = eff_sig**2*(mhalo_obs[i]/mherr**2 + new_mhalo_mu/new_mhalo_sig**2)
+            new_mhalo = np.random.normal(eff_mu, eff_sig, 1)
+            mhalo_ind[i] = new_mhalo
+
+            # draws a new value of the stellar mass
+            eff_sig = (1./mserr**2 + 1./new_mstar_sig**2)**(-0.5)
+            eff_mu = eff_sig**2*(mstar_obs[i]/mserr**2 + (new_mstar_mu + new_mstar_mhalo*(mhalo_ind[i] - 13.))/new_mstar_sig**2)
+            new_mstar = np.random.normal(eff_mu, eff_sig, 1)
+            mstar_ind[i] = new_mstar
+
+        # updates values of the hyperparameters
+        mhalo_mu = new_mhalo_mu
+        mhalo_sig = new_mhalo_sig
+        mstar_mu = new_mstar_mu
+        mstar_mhalo = new_mstar_mhalo
+        mstar_sig = new_mstar_sig
+
+        chain['mhalo_mu'][j] = mhalo_mu
+        chain['mhalo_sig'][j] = mhalo_sig
+        chain['mstar_mu'][j] = mstar_mu
+        chain['mstar_mhalo'][j] = mstar_mhalo
+        chain['mstar_sig'][j] = mstar_sig
+
+    return chain
+
+
+def hierarchical_gibbs_sampling_ubercheat(lenses, nstep=1000):
+
+    mhalo_mu = 13.
+    mhalo_sig = 0.3
+
+    mstar_mu = 11.5
+    mstar_sig = 0.1
+    mstar_mhalo = 0.8
+
+    h70 = 1.
+
+    nlens = len(lenses)
+
+    s_ind = np.zeros(nlens)
+    mhalo_ind = np.zeros(nlens)
+    mstar_ind = np.zeros(nlens)
+    dt_unith_ind = np.zeros(nlens)
+    dt_obs = np.zeros(nlens)
+    dt_errs = np.zeros(nlens)
+
+    chain = {'mhalo_mu': np.zeros(nstep), 'mhalo_sig': np.zeros(nstep), 'mstar_mu': np.zeros(nstep), \
+             'mstar_mhalo': np.zeros(nstep), 'mstar_sig': np.zeros(nstep)}
+
+    for i in range(nlens):
+        mhalo_ind[i] = np.log10(lenses[i].mhalo)
+        mstar_ind[i] = np.log10(lenses[i].mstar)
+
+    for j in range(nstep):
+
+        print j
+        # draws a new value of the mean halo mass
+        eff_sig = mhalo_sig/(1.*nlens)**0.5
+        eff_mu = mhalo_ind.mean()
+        new_mhalo_mu = np.random.normal(eff_mu, eff_sig, 1)
+
+        # draws a new value of the dispersion in halo mass
+        new_mhalo_sig = draw_sigma_given_mu(new_mhalo_mu, mhalo_ind)
+
+        # draws a new value of the mean stellar mass
+        eff_sig = mstar_sig/(1.*nlens)**0.5
+        eff_mu = (mstar_ind - mstar_mhalo*(mhalo_ind - 13.)).mean()
+        new_mstar_mu = np.random.normal(eff_mu, eff_sig, 1)
+
+        # draws a new value of the halo mass dependence of the stellar mass
+        eff_sig = (((mhalo_ind - 13.)**2/mstar_sig**2).sum())**(-0.5)
+        eff_mu = eff_sig**2*((mstar_ind - new_mstar_mu)/(mhalo_ind - 13.)/mstar_sig**2*(mhalo_ind - 13.)**2).sum()
+        new_mstar_mhalo = np.random.normal(eff_mu, eff_sig, 1)
+
+        # draws a new value of the dispersion in stellar mass
+        new_mstar_sig = draw_sigma_given_mu(new_mstar_mu + new_mstar_mhalo*(mhalo_ind - 13.), mstar_ind)
+
+        # updates values of the hyperparameters
+        mhalo_mu = new_mhalo_mu
+        mhalo_sig = new_mhalo_sig
+        mstar_mu = new_mstar_mu
+        mstar_mhalo = new_mstar_mhalo
+        mstar_sig = new_mstar_sig
+
+        chain['mhalo_mu'][j] = mhalo_mu
+        chain['mhalo_sig'][j] = mhalo_sig
+        chain['mstar_mu'][j] = mstar_mu
+        chain['mstar_mhalo'][j] = mstar_mhalo
+        chain['mstar_sig'][j] = mstar_sig
+
+    return chain
+
