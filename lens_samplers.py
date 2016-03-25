@@ -299,3 +299,98 @@ def fit_nfwdev_knownimf_nocvirscat_h70prior(lens, nstep=11000, burnin=1000, thin
               'image_a':M.trace('image_a')[:], 'image_b':M.trace('image_b')[:], 'caustic': M.trace('caustic')[:]}
 
     return outdic
+
+
+def fit_nfwdev_knownimf_nocvirscat_nodtfit(lens, nstep=11000, burnin=1000, thin=1):
+
+    model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
+                                    reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
+
+    model_lens.normalize()
+
+    xa_obs, xb_obs = lens.obs_images[0]
+    imerr = lens.obs_images[1]
+
+    mstar_obs, mstar_err = lens.obs_lmstar
+
+    model_lens.get_caustic()
+    model_lens.make_grids(err=imerr, nsig=5.)
+
+    mstar_par = pymc.Uniform('lmstar', lower=10.5, upper=12.5, value=np.log10(lens.mstar))
+    mhalo_par = pymc.Uniform('mhalo', lower=12., upper=14., value=np.log10(lens.mhalo))
+
+    def cfunc(lmhalo):
+        return 10.**(0.971 - 0.094*(lmhalo - 12.))
+
+    @pymc.deterministic()
+    def caustic(mstar=mstar_par, mhalo=mhalo_par):
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = cfunc(mhalo)
+
+        model_lens.normalize()
+
+        model_lens.get_caustic()
+
+        return model_lens.caustic
+
+    s2_par = pymc.Uniform('s2', lower=0., upper=caustic**2, value=lens.source**2)
+
+    @pymc.deterministic()
+    def images(mstar=mstar_par, mhalo=mhalo_par, s2=s2_par):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = cfunc(mhalo)
+
+        model_lens.normalize()
+
+        model_lens.get_images()
+        if len(model_lens.images) < 2:
+            return np.inf, -np.inf
+        else:
+            return model_lens.images
+
+    @pymc.deterministic()
+    def image_a(imgs=images):
+        return imgs[0]
+
+    @pymc.deterministic()
+    def image_b(imgs=images):
+        return imgs[1]
+
+    @pymc.deterministic()
+    def timedelay(mstar=mstar_par, mhalo=mhalo_par, s2=s2_par, imgs=images):
+
+        model_lens.source = s2**0.5
+        model_lens.mstar = 10.**mstar
+        model_lens.mhalo = 10.**mhalo
+        model_lens.cvir = cfunc(mhalo)
+
+        model_lens.normalize()
+        model_lens.images = imgs
+
+        if len(imgs) < 2:
+            return 0.
+        else:
+            model_lens.get_timedelay()
+            return model_lens.timedelay
+
+    ima_logp = pymc.Normal('ima_logp', mu=image_a, tau=1./imerr**2, value=xa_obs, observed=True)
+    imb_logp = pymc.Normal('imb_logp', mu=image_b, tau=1./imerr**2, value=xb_obs, observed=True)
+
+    mstar_logp = pymc.Normal('mstar_logp', mu=mstar_par, tau=1./mstar_err**2, value=mstar_obs, observed=True)
+
+    pars = [mstar_par, mhalo_par, s2_par, timedelay, image_a, image_b, caustic]
+
+    M = pymc.MCMC(pars)
+    M.use_step_method(pymc.AdaptiveMetropolis, [mstar_par, mhalo_par, s2_par])
+    M.sample(nstep, burnin, thin=thin)
+
+    outdic = {'mstar':M.trace('lmstar')[:], 'mhalo':M.trace('mhalo')[:], \
+              'timedelay':M.trace('timedelay')[:], 'source':(M.trace('s2')[:]**0.5).flatten(), \
+              'image_a':M.trace('image_a')[:], 'image_b':M.trace('image_b')[:], 'caustic': M.trace('caustic')[:]}
+
+    return outdic
+
