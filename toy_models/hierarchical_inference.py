@@ -5,7 +5,7 @@ import pickle
 day = 24.*3600.
 
 
-def infer_simple_reality_nocosmo(mock, chains, nstep=11000, burnin=1000, nis=1000):
+def infer_simple_reality_nocosmo(guess, chains, nstep=11000, burnin=1000, nis=1000):
 
     from scipy.special import erf
 
@@ -24,18 +24,18 @@ def infer_simple_reality_nocosmo(mock, chains, nstep=11000, burnin=1000, nis=100
 
     #defines the hyper-parameters
 
-    truth = mock['truth']
+    guess = mock['guess']
 
-    mhalo_mu = pymc.Uniform('mhalo_mu', lower=12.0, upper=14.0, value=truth['mhalo_mu'])
-    mhalo_sig = pymc.Uniform('mhalo_sig', lower=0., upper=1., value=truth['mhalo_sig'])
+    mhalo_mu = pymc.Uniform('mhalo_mu', lower=12.0, upper=14.0, value=guess['mhalo_mu'])
+    mhalo_sig = pymc.Uniform('mhalo_sig', lower=0., upper=1., value=guess['mhalo_sig'])
 
-    mstar_mhalo = pymc.Uniform('mstar_mhalo', lower=0., upper=2., value=truth['mstar_mhalo'])
+    mstar_mhalo = pymc.Uniform('mstar_mhalo', lower=0., upper=2., value=guess['mstar_mhalo'])
 
-    mstar_mu = pymc.Uniform('mstar_mu', lower=11., upper=12., value=truth['mstar_mu'])
-    mstar_sig = pymc.Uniform('mstar_sig', lower=0., upper=2., value=truth['mstar_sig'])
+    mstar_mu = pymc.Uniform('mstar_mu', lower=11., upper=12., value=guess['mstar_mu'])
+    mstar_sig = pymc.Uniform('mstar_sig', lower=0., upper=2., value=guess['mstar_sig'])
 
-    aimf_mu = pymc.Uniform('aimf_mu', lower=-0.2, upper=0.2, value=truth['aimf_mu'])
-    aimf_sig = pymc.Uniform('aimf_sig', lower=0., upper=0.5, value=truth['aimf_sig'])
+    aimf_mu = pymc.Uniform('aimf_mu', lower=-0.2, upper=0.2, value=guess['aimf_mu'])
+    aimf_sig = pymc.Uniform('aimf_sig', lower=0., upper=0.5, value=guess['aimf_sig'])
 
     pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig, aimf_mu, aimf_sig]
 
@@ -76,7 +76,7 @@ def infer_simple_reality_nocosmo(mock, chains, nstep=11000, burnin=1000, nis=100
     return outdic
 
 
-def infer_simple_reality_knownimf_nocosmo(mock, chains, nstep=11000, burnin=1000, thin=1):
+def infer_simple_reality_knownimf_nocosmo(guess, chains, nstep=11000, burnin=1000, thin=1):
 
     from scipy.special import erf
 
@@ -96,15 +96,13 @@ def infer_simple_reality_knownimf_nocosmo(mock, chains, nstep=11000, burnin=1000
 
     #defines the hyper-parameters
 
-    truth = mock['truth']
+    mhalo_mu = pymc.Uniform('mhalo_mu', lower=12.0, upper=14.0, value=guess['mhalo_mu'])
+    mhalo_sig = pymc.Uniform('mhalo_sig', lower=0., upper=1., value=guess['mhalo_sig'])
 
-    mhalo_mu = pymc.Uniform('mhalo_mu', lower=12.0, upper=14.0, value=truth['mhalo_mu'])
-    mhalo_sig = pymc.Uniform('mhalo_sig', lower=0., upper=1., value=truth['mhalo_sig'])
+    mstar_mhalo = pymc.Uniform('mstar_mhalo', lower=0., upper=2., value=guess['mstar_mhalo'])
 
-    mstar_mhalo = pymc.Uniform('mstar_mhalo', lower=0., upper=2., value=truth['mstar_mhalo'])
-
-    mstar_mu = pymc.Uniform('mstar_mu', lower=11., upper=12., value=truth['mstar_mu'])
-    mstar_sig = pymc.Uniform('mstar_sig', lower=0., upper=2., value=truth['mstar_sig'])
+    mstar_mu = pymc.Uniform('mstar_mu', lower=11., upper=12., value=guess['mstar_mu'])
+    mstar_sig = pymc.Uniform('mstar_sig', lower=0., upper=2., value=guess['mstar_sig'])
 
     pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig]
 
@@ -144,21 +142,19 @@ def infer_simple_reality_knownimf_nocosmo(mock, chains, nstep=11000, burnin=1000
     return outdic
 
 
-def infer_simple_reality_knownimf_nocosmo_analytic(mock, mhalo, err_mhalo, mstar, err_mstar, nstep=11000, burnin=1000):
+def infer_simple_reality_knownimf_nocosmo_analytic(guess, mhalo, err_mhalo, mstar, err_mstar, nstep=11000, burnin=1000):
 
     nlens = len(mhalo)
 
     #defines the hyper-parameters
 
-    truth = mock['truth']
+    mhalo_mu = pymc.Uniform('mhalo_mu', lower=12.0, upper=14.0, value=guess['mhalo_mu'])
+    mhalo_sig = pymc.Uniform('mhalo_sig', lower=0., upper=1., value=guess['mhalo_sig'])
 
-    mhalo_mu = pymc.Uniform('mhalo_mu', lower=12.0, upper=14.0, value=truth['mhalo_mu'])
-    mhalo_sig = pymc.Uniform('mhalo_sig', lower=0., upper=1., value=truth['mhalo_sig'])
+    mstar_mhalo = pymc.Uniform('mstar_mhalo', lower=0., upper=2., value=guess['mstar_mhalo'])
 
-    mstar_mhalo = pymc.Uniform('mstar_mhalo', lower=0., upper=2., value=truth['mstar_mhalo'])
-
-    mstar_mu = pymc.Uniform('mstar_mu', lower=11., upper=12., value=truth['mstar_mu'])
-    mstar_sig = pymc.Uniform('mstar_sig', lower=0., upper=2., value=truth['mstar_sig'])
+    mstar_mu = pymc.Uniform('mstar_mu', lower=11., upper=12., value=guess['mstar_mu'])
+    mstar_sig = pymc.Uniform('mstar_sig', lower=0., upper=2., value=guess['mstar_sig'])
 
     pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig]
 
