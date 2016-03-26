@@ -1,7 +1,7 @@
 import daft
 
 
-def most_general_PGM():
+def hierarchical_PGM():
 
     # Instantiate a PGM.
     pgm = daft.PGM([3.3, 3.0], origin=[0.0, 0.0], grid_unit=2.6, node_unit=1.3, observed_style="inner")
@@ -28,6 +28,26 @@ def most_general_PGM():
 
     # Render and save.
     pgm.render()
-    pgm.figure.savefig("most_general_PGM.png", dpi=300)
+    pgm.figure.savefig("most_general_hierarchical_PGM.png", dpi=300)
+
+    return
+
+def individual_PGM():
+
+    # Instantiate a PGM.
+    pgm = daft.PGM([3.3, 3.0], origin=[0.0, 0.0], grid_unit=2.6, node_unit=1.3, observed_style="inner")
+
+    # Latent variables:
+    pgm.add_node(daft.Node("a", r"$a_k$", 1.1, 2.0))
+
+    # Data:
+    pgm.add_node(daft.Node("observeddata", r"$d_{k,\rm obs}$", 1.1, 1.0, observed=True))
+
+    # Add in the edges.
+    pgm.add_edge("a", "observeddata")
+
+    # Render and save.
+    pgm.render()
+    pgm.figure.savefig("most_general_individual_PGM.png", dpi=300)
 
     return
