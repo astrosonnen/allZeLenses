@@ -101,7 +101,7 @@ def fit_nfwdev_nocvirscat_nodtfit(lens, nstep=15000, burnin=5000, thin=1):
     return outdic
 
 
-def fit_nfwdev_h70prior(lens, nstep=11000, burnin=1000, thin=1, h70p_mu=1., h70p_sig=0.05):
+def fit_nfwdev_dodtfit(lens, nstep=11000, burnin=1000, thin=1):
 
     model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
                                     reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
@@ -120,7 +120,7 @@ def fit_nfwdev_h70prior(lens, nstep=11000, burnin=1000, thin=1, h70p_mu=1., h70p
     mstar_par = pymc.Uniform('lmstar', lower=10.5, upper=12.5, value=np.log10(lens.mstar))
     alpha_par = pymc.Uniform('alpha', lower=-0.5, upper=0.5, value=0.)
     mhalo_par = pymc.Uniform('mhalo', lower=12., upper=14., value=np.log10(lens.mhalo))
-    h70_par = pymc.Normal('h70', mu=h70p_mu, tau=1./h70p_sig**2, value=1.)
+    h70_par = pymc.Uniform('h70', lower=0.5, upper=1.5, value=1.)
     c_par = pymc.Normal('lcvir', mu=0.971 - 0.094*(mhalo_par-12.), tau=1./0.1**2, value=np.log10(lens.cvir))
 
     @pymc.deterministic()
@@ -199,7 +199,7 @@ def fit_nfwdev_h70prior(lens, nstep=11000, burnin=1000, thin=1, h70p_mu=1., h70p
     return outdic
 
 
-def fit_nfwdev_nocvirscat_h70prior(lens, nstep=11000, burnin=1000, thin=1, h70p_mu=1., h70p_sig=0.05):
+def fit_nfwdev_nocvirscat_dodtfit(lens, nstep=11000, burnin=1000, thin=1):
 
     model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
                                     reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
@@ -218,7 +218,7 @@ def fit_nfwdev_nocvirscat_h70prior(lens, nstep=11000, burnin=1000, thin=1, h70p_
     mstar_par = pymc.Uniform('lmstar', lower=10.5, upper=12.5, value=np.log10(lens.mstar))
     alpha_par = pymc.Uniform('alpha', lower=-0.5, upper=0.5, value=0.)
     mhalo_par = pymc.Uniform('mhalo', lower=12., upper=14., value=np.log10(lens.mhalo))
-    h70_par = pymc.Normal('h70', mu=h70p_mu, tau=1./h70p_sig**2, value=1.)
+    h70_par = pymc.Uniform('h70', lower=0.5, upper=1.5, value=1.)
 
     def cfunc(lmhalo):
         return 10.**(0.971 - 0.094*(lmhalo - 12.))
@@ -299,7 +299,7 @@ def fit_nfwdev_nocvirscat_h70prior(lens, nstep=11000, burnin=1000, thin=1, h70p_
     return outdic
 
 
-def fit_nfwdev_knownimf_nocvirscat_h70prior(lens, nstep=11000, burnin=1000, thin=1, h70p_mu=1., h70p_sig=0.05):
+def fit_nfwdev_knownimf_nocvirscat_dodtfit(lens, nstep=11000, burnin=1000, thin=1):
 
     model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
                                     reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
@@ -317,7 +317,7 @@ def fit_nfwdev_knownimf_nocvirscat_h70prior(lens, nstep=11000, burnin=1000, thin
 
     mstar_par = pymc.Uniform('lmstar', lower=10.5, upper=12.5, value=np.log10(lens.mstar))
     mhalo_par = pymc.Uniform('mhalo', lower=12., upper=14., value=np.log10(lens.mhalo))
-    h70_par = pymc.Normal('h70', mu=h70p_mu, tau=1./h70p_sig**2, value=1.)
+    h70_par = pymc.Uniforma('h70', lower=0.5, upper=1.5, value=1.)
 
     def cfunc(lmhalo):
         return 10.**(0.971 - 0.094*(lmhalo - 12.))
