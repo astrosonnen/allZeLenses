@@ -1,7 +1,7 @@
 import pickle
 from toy_models import hierarchical_inference
 
-mockname = 'mock_C_100lenses.dat'
+mockname = 'mock_D_100lenses.dat'
 
 f = open(mockname, 'r')
 mock, chains = pickle.load(f)
@@ -15,9 +15,9 @@ for lens in lenses:
     dt_err.append(lens.obs_timedelay[1])
 
 #chain = hierarchical_inference.infer_simple_reality_nocosmo(mock, chains)
-chain = hierarchical_inference.infer_simple_reality_knownimf(mock['truth'], chains, dt_obs, dt_err, thin=10, nstep=50000, burnin=10000)
+chain = hierarchical_inference.infer_simple_reality(mock['truth'], chains, dt_obs, dt_err, thin=1, nstep=50000, burnin=10000)
 
-outname=mockname.replace('.dat', '_inference.dat')
+outname=mockname.replace('.dat', '_inference_nothin.dat')
 
 f = open(outname, 'w')
 pickle.dump(chain, f)

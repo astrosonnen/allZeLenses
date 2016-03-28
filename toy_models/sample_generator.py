@@ -87,7 +87,7 @@ def simple_reality_sample_nocvirscat(nlens=1000, mstar_mu=11.5, mstar_sig=0.1, m
                                      mstar_mhalo=0.8, aimf_mu=0., aimf_sig=0.05, logreff_mu=0.46, mstar_err=0.1, \
                                      radmagrat_err=0.050, imerr=0.1, dt_err=5., h70=1.):
 
-    # redshift distribution of lenses: uniform between 0.1 and 0.3 (hardcoded)
+5    # redshift distribution of lenses: uniform between 0.1 and 0.3 (hardcoded)
     zds = np.random.rand(nlens)*0.2+0.2
 
     # redshift distribution of sources: some sort of truncated exponential... (hardcoded)

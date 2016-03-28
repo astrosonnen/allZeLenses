@@ -7,7 +7,7 @@ import pickle
 
 nlens = 100
 
-mockname = 'mock_D_%dlenses.dat'%nlens
+mockname = 'mock_E_%dlenses.dat'%nlens
 
 mock = sample_generator.simple_reality_sample_nocvirscat(nlens=nlens)
 
@@ -15,7 +15,7 @@ chains = []
 i = 0
 for lens in mock['lenses']:
     print 'sampling lens %d...'%i
-    chain = lens_samplers.fit_nfwdev_nocvirscat_nodtfit(lens, nstep=15000, burnin=5000)
+    chain = lens_samplers.fit_nfwdev_nocvirscat_nodtfit(lens, nstep=110000, burnin=10000, thin=10)
     chains.append(chain)
     i += 1
 
