@@ -21,6 +21,9 @@ def infer_simple_reality(guess, chains, dt_obs, dt_err, nstep=15000, burnin=5000
             keep = thin*np.arange(nsamp/thin)
             chain[par] = chain[par].flatten()[keep]
 
+        bad = chain['timedelay'] != chain['timedelay']
+        chain['timedelay'][bad.flatten()] = 0.
+
         tchains.append(chain)
 
     #defines the hyper-parameters

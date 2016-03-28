@@ -78,7 +78,7 @@ def fit_nfwdev_nocvirscat_nodtfit(lens, nstep=15000, burnin=5000, thin=1):
         model_lens.normalize()
         model_lens.images = imgs
 
-        if len(imgs) < 2:
+        if not np.isfinite(imgs[0]):
             return 0.
         else:
             model_lens.get_radmag_ratio()
@@ -95,7 +95,7 @@ def fit_nfwdev_nocvirscat_nodtfit(lens, nstep=15000, burnin=5000, thin=1):
         model_lens.normalize()
         model_lens.images = imgs
 
-        if len(imgs) < 2:
+        if not np.isfinite(imgs[0]):
             return 0.
         else:
             model_lens.get_timedelay()
@@ -117,7 +117,7 @@ def fit_nfwdev_nocvirscat_nodtfit(lens, nstep=15000, burnin=5000, thin=1):
     outdic = {'mstar':M.trace('lmstar')[:], 'mhalo':M.trace('mhalo')[:], 'alpha': M.trace('alpha')[:], \
               'timedelay':M.trace('timedelay')[:], 'source':(M.trace('s2')[:]**0.5).flatten(), \
               'image_a':M.trace('image_a')[:], 'image_b':M.trace('image_b')[:], 'caustic': M.trace('caustic')[:],\
-              'radmagrat': M.trace('radmagrat')}
+              'radmagrat': M.trace('radmagrat')[:]}
 
     return outdic
 
@@ -193,7 +193,7 @@ def fit_nfwdev_nocvirscat_noradmagfit_nodtfit(lens, nstep=15000, burnin=5000, th
         model_lens.normalize()
         model_lens.images = imgs
 
-        if len(imgs) < 2:
+        if not np.isfinite(imgs[0]):
             return 0.
         else:
             model_lens.get_timedelay()
@@ -289,7 +289,7 @@ def fit_nfwdev_dodtfit(lens, nstep=11000, burnin=1000, thin=1):
         model_lens.normalize()
         model_lens.images = imgs
 
-        if len(imgs) < 2:
+        if not np.isfinite(imgs[0]):
             return 0.
         else:
             model_lens.get_timedelay()
@@ -389,7 +389,7 @@ def fit_nfwdev_nocvirscat_dodtfit(lens, nstep=11000, burnin=1000, thin=1):
         model_lens.normalize()
         model_lens.images = imgs
 
-        if len(imgs) < 2:
+        if not np.isfinite(imgs[0]):
             return 0.
         else:
             model_lens.get_timedelay()

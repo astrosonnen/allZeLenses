@@ -106,7 +106,7 @@ class NfwDev:
 
         imageeq = lambda r: r - self.alpha(r) - self.source
         if imageeq(self.radcrit)*imageeq(rmax) >= 0. or imageeq(-rmax)*imageeq(-self.radcrit) >= 0.:
-            self.images = (-99., 99.)
+            self.images = (-np.inf, np.inf)
         else:
             xa = brentq(imageeq, rmin, rmax, xtol=1e-4)
             xb = brentq(imageeq, -rmax, -self.radcrit, xtol=1e-4)

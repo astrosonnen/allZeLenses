@@ -2,11 +2,11 @@ from allZeTools.plotters import cornerplot
 import pylab
 import pickle
 
-f = open('mock_D_100lenses_inference.dat', 'r')
+f = open('mock_E_100lenses_Nind1e5_inference.dat', 'r')
 chain = pickle.load(f)
 f.close()
 
-f = open('mock_D_100lenses.dat', 'r')
+f = open('mock_E_100lenses.dat', 'r')
 mock, chains = pickle.load(f)
 f.close()
 
@@ -28,7 +28,7 @@ for par in chain:
 	cp.append({'data': chain[par], 'label': labels[par], 'value': mock['truth'][par], 'ticks': ticks[par]})
 
 cornerplot(cp, color='c')
-pylab.savefig('simple_reality_mockD_100lenses_cp.png')
+#pylab.savefig('simple_reality_mockD_100lenses_nothin_cp.png')
 pylab.show()
 
 
