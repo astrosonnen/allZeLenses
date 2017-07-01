@@ -5,6 +5,62 @@ import pickle
 day = 24.*3600.
 
 
+def infer_simple_reality_truthprior(guess, chains, dt_obs, dt_err, nstep=15000, burnin=5000, thin=1):
+
+    from scipy.special import erf
+
+    nlens = len(chains)
+
+    # goes through the chains and thins them to nis samples
+    tchains = []
+    for i in range(nlens):
+        chain = chains[i]
+
+        for par in chain:
+            nsamp = len(chain[par])
+            keep = thin*np.arange(nsamp/thin)
+            chain[par] = chain[par].flatten()[keep]
+
+        bad = chain['timedelay'] != chain['timedelay']
+        chain['timedelay'][bad.flatten()] = 0.
+
+        tchains.append(chain)
+
+    #defines the hyper-parameters
+
+    h70 = pymc.Uniform('h70', lower=0.5, upper=1.5, value=1.)
+
+    pars = [h70]
+
+    @pymc.deterministic(name='like')
+    def like(h70=h70):
+
+        totlike = 0.
+
+        for i in range(nlens):
+
+            dt_term = 1./dt_err[i]*np.exp(-0.5*(dt_obs[i] - tchains[i]['timedelay']/h70)**2/dt_err[i]**2)
+
+            totlike += np.log(dt_term.mean())
+
+        return totlike
+
+    @pymc.stochastic(observed=True, name='logp')
+    def logp(value=0., p=pars):
+        return like
+
+    M = pymc.MCMC(pars+[like])
+    M.use_step_method(pymc.AdaptiveMetropolis, pars)
+    M.sample(nstep, burnin)
+
+    outdic = {}
+    for par in pars:
+        outdic[str(par)] = M.trace(par)[:]
+    outdic['logp'] = M.trace('like')[:]
+
+    return outdic
+
+
 def infer_simple_reality_interimprior(guess, chains, dt_obs, dt_err, nstep=15000, burnin=5000, thin=1):
 
     from scipy.special import erf
@@ -56,16 +112,13 @@ def infer_simple_reality_interimprior(guess, chains, dt_obs, dt_err, nstep=15000
             ms_term = 1./mstar_sig*np.exp(-(mglob_model - tchains[i]['mstar'])**2/(2.*mstar_sig**2))
             a_term = 1./aimf_sig*np.exp(-0.5*(aimf_mu - tchains[i]['alpha'])**2/aimf_sig**2)
 
-            interim_prior = 1./0.3**2*np.exp(-0.5*(tchains[i]['mhalo'] - 1.7 - tchains[i]['mstar'])**2/0.3**2)
+            interim_prior = 1./0.3*np.exp(-0.5*(tchains[i]['mhalo'] - 1.7 - tchains[i]['mstar'])**2/0.3**2)*\
+                            1./0.5*np.exp(-0.5*(tchains[i]['mstar'] - 11.5)**2/0.5**2)*\
+                            1./0.2*np.exp(-0.5*(tchains[i]['alpha'] - 0.)**2/0.2**2)
 
             dt_term = 1./dt_err[i]*np.exp(-0.5*(dt_obs[i] - tchains[i]['timedelay']/h70)**2/dt_err[i]**2)
 
-            #norms = 0.5*(erf((mglob_model - 10.5)/2.**0.5/mstar_sig) - erf((mglob_model - 12.5)/2.**0.5/mstar_sig)) * \
-            #        0.5*(erf((mhalo_mu - 12.)/2.**0.5/mhalo_sig) - erf((mhalo_mu - 14.)/2.**0.5/mhalo_sig)) * \
-            #        0.5*(erf((aimf_mu + 0.5)/2.**0.5/aimf_sig) - erf((aimf_mu - 0.5)/2.**0.5/aimf_sig))
-            norms = 1.
-
-            term = (mh_term*ms_term*a_term*dt_term/norms/interim_prior).mean()
+            term = (mh_term*ms_term*a_term*dt_term/interim_prior).mean()
             totlike += np.log(term)
 
         return totlike
@@ -440,5 +493,4 @@ def infer_simple_reality_knownimf_nocosmo_analytic(guess, mhalo, err_mhalo, msta
     outdic['logp'] = M.trace('like')[:]
 
     return outdic
-
 
