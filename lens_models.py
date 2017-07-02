@@ -462,6 +462,9 @@ class powerlaw:
 
     def get_images(self):
 
+        self.get_caustic()
+        self.get_xy_minmag()
+
         if self.gamma < 2.:
             rmin = self.radcrit
             rmax = 2.*self.rein
@@ -486,4 +489,33 @@ class powerlaw:
         radmag_A = (1. + self.m(self.images[0])/self.images[0]**2 - 2.*self.kappa(self.images[0]))**(-1)
         radmag_B = (1. + self.m(self.images[1])/self.images[1]**2 - 2.*self.kappa(self.images[1]))**(-1)
         self.radmag_ratio = radmag_A/radmag_B
+
+    def make_grids(self, err=0.01, nsig=3.):
+        eps = 1e-4 * self.images[0]
+
+        tol = 0.1*err
+        x0A = self.images[0] - nsig*err
+        x0A = x0A - x0A%tol
+        x1A = self.images[0] + nsig*err
+        x1A = x1A - x1A%tol
+        gridA = np.arange(x0A, x1A, tol)
+
+        x0B = self.images[1] - nsig*err
+        x0B = x0B - x0B%tol
+        x1B = -max(eps, -(self.images[1] + nsig*err))#, self.radcrit)
+        x1B = x1B - x1B%tol
+        gridB = np.arange(x0B,x1B,tol)
+
+        self.grids = (gridA, gridB)
+
+    def fast_images(self):
+
+        self.images = []
+        for grid in self.grids:
+            dx = grid[1] - grid[0]
+            ys = grid - self.alpha(grid)
+            diff = (self.source - ys[:-1])*(self.source - ys[1:])
+            found = diff <= 0.
+            for x in grid[:-1][found]:
+                self.images.append(x+0.5*dx)
 
