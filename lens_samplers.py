@@ -5,10 +5,10 @@ import pymc
 day = 24.*3600.
 
 
-def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1):
+def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1, mhalo_prior=(13., 0.5), mstar_prior=(11.5, 0.5), alpha_prior=(0., 0.2), cvir_prior=(0.877, 0.3)):
 
     model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
-                                    reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source, mhalo_prior=(13., 0.5), mstar_prior=(11.5, 0.5), alpha_prior=(0., 0.2), cvir_prior=(0.877, 0.3))
+                                    reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
 
     model_lens.normalize()
 
@@ -115,7 +115,7 @@ def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1):
     outdic = {'mstar':M.trace('lmstar')[:], 'mhalo':M.trace('mhalo')[:], 'alpha': M.trace('alpha')[:], \
               'lcvir': M.trace('lcvir')[:], 'timedelay':M.trace('timedelay')[:], \
               'source':(M.trace('s2')[:]**0.5).flatten(), 'image_a':M.trace('image_a')[:], \
-              'image_b':M.trace('image_b')[:], 'caustic': M.trace('caustic')[:], 'radmagrat': M.trace('radmagrat')[:]}
+              'image_b':M.trace('image_b')[:], 'caustic': M.trace('caustic')[:], 'radmagrat': M.trace('radmagrat')[:], 'mhalo_prior': mhalo_prior, 'mstar_prior': mstar_prior, 'alpha_prior': alpha_prior, 'cvir_prior': cvir_prior}
 
     return outdic
 
