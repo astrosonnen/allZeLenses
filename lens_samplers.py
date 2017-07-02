@@ -8,7 +8,7 @@ day = 24.*3600.
 def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1):
 
     model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
-                                    reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
+                                    reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source, mhalo_prior=(13., 0.5), mstar_prior=(11.5, 0.5), alpha_prior=(0., 0.2), cvir_prior=(0.877, 0.3))
 
     model_lens.normalize()
 
@@ -22,10 +22,10 @@ def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1):
     model_lens.get_caustic()
     model_lens.make_grids(err=imerr, nsig=5.)
 
-    mstar_par = pymc.Normal('lmstar', mu=11.5, tau=1./0.5**2, value=np.log10(lens.mstar))
-    alpha_par = pymc.Normal('alpha', mu=0., tau=1./0.2**2, value=0.)
-    mhalo_par = pymc.Normal('mhalo', mu=13., tau=1./0.5**2, value=np.log10(lens.mhalo))
-    c_par = pymc.Normal('lcvir', mu=0.971 - 0.094*(mhalo_par-12.), tau=1./0.1**2, value=np.log10(lens.cvir))
+    mstar_par = pymc.Normal('lmstar', mu=mstar_prior[0], tau=1./mstar_prior[1]**2, value=np.log10(lens.mstar))
+    alpha_par = pymc.Normal('alpha', mu=alpha_prior[0], tau=1./alpha_prior[1]**2, value=0.)
+    mhalo_par = pymc.Normal('mhalo', mu=mhalo_prior[0], tau=1./mhalo_prior[1]**2, value=np.log10(lens.mhalo))
+    c_par = pymc.Normal('lcvir', mu=cvir_prior[0], tau=1./cvir_prior[1]**2, value=np.log10(lens.cvir))
 
     @pymc.deterministic()
     def caustic(mstar=mstar_par, mhalo=mhalo_par, cvir=c_par):
