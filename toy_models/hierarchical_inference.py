@@ -95,13 +95,13 @@ def infer_simple_reality_interimprior(guess, chains, dt_obs, dt_err, nstep=15000
     aimf_mu = pymc.Uniform('aimf_mu', lower=-0.2, upper=0.2, value=guess['aimf_mu'])
     aimf_sig = pymc.Uniform('aimf_sig', lower=0., upper=0.5, value=guess['aimf_sig'])
 
-    h70 = pymc.Uniform('h70', lower=0.5, upper=1.5, value=1.)
+    h_par = pymc.Uniform('h', lower=0.2, upper=1.5, value=0.7)
 
-    pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig, aimf_mu, aimf_sig, h70]
+    pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig, aimf_mu, aimf_sig, h_par]
 
     @pymc.deterministic(name='like')
     def like(mhalo_mu=mhalo_mu, mhalo_sig=mhalo_sig, mstar_mhalo=mstar_mhalo, mstar_mu=mstar_mu, mstar_sig=mstar_sig, \
-             aimf_mu=aimf_mu, aimf_sig=aimf_sig, h70=h70):
+             aimf_mu=aimf_mu, aimf_sig=aimf_sig, h=h_par):
 
         totlike = 0.
 
@@ -112,11 +112,11 @@ def infer_simple_reality_interimprior(guess, chains, dt_obs, dt_err, nstep=15000
             ms_term = 1./mstar_sig*np.exp(-(mglob_model - tchains[i]['mstar'])**2/(2.*mstar_sig**2))
             a_term = 1./aimf_sig*np.exp(-0.5*(aimf_mu - tchains[i]['alpha'])**2/aimf_sig**2)
 
-            interim_prior = 1./0.3*np.exp(-0.5*(tchains[i]['mhalo'] - 1.7 - tchains[i]['mstar'])**2/0.3**2)*\
+            interim_prior = 1./0.3*np.exp(-0.5*(tchains[i]['mhalo'] - 13.)**2/0.5**2)*\
                             1./0.5*np.exp(-0.5*(tchains[i]['mstar'] - 11.5)**2/0.5**2)*\
                             1./0.2*np.exp(-0.5*(tchains[i]['alpha'] - 0.)**2/0.2**2)
 
-            dt_term = 1./dt_err[i]*np.exp(-0.5*(dt_obs[i] - tchains[i]['timedelay']/h70)**2/dt_err[i]**2)
+            dt_term = 1./dt_err[i]*np.exp(-0.5*(dt_obs[i] - tchains[i]['timedelay']/(h/0.7))**2/dt_err[i]**2)
 
             term = (mh_term*ms_term*a_term*dt_term/interim_prior).mean()
             totlike += np.log(term)
