@@ -395,7 +395,7 @@ class powerlaw:
 
         self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*self.ds*self.dd/self.dds*cgs.Mpc*cgs.arcsec2rad**2
         self.arcsec2kpc = cgs.arcsec2rad*self.dd*1000.
-        self.Dt = self.dd*self.ds/self.dds*cgs.Mpc/cgs.c*(1. + self.zd)
+        self.Dt = self.dd*self.ds/self.dds*cgs.Mpc*(1. + self.zd)
 
     def get_b_from_rein(self):
         self.b = self.rein*(3. - self.gamma)**(1./(self.gamma - 1.))
@@ -460,7 +460,7 @@ class powerlaw:
             self.yminmag = -self.xminmag + self.alpha(self.xminmag)
 
 
-    def get_images(self):
+    def get_images(self, xtol=1e-4):
 
         self.get_caustic()
         self.get_xy_minmag()
@@ -476,12 +476,12 @@ class powerlaw:
         if imageeq(rmin)*imageeq(rmax) >= 0.:# or imageeq(-rmax)*imageeq(rmin) >= 0.:
             self.images = (-np.inf, np.inf)
         else:
-            xa = brentq(imageeq, self.rein, rmax, xtol=1e-4)
-            xb = brentq(imageeq, -self.rein, -rmin, xtol=1e-4)
+            xa = brentq(imageeq, self.rein, rmax, xtol=xtol)
+            xb = brentq(imageeq, -self.rein, -rmin, xtol=xtol)
             self.images = (xa, xb)
 
     def get_timedelay(self):
-        self.timedelay = -self.Dt*cgs.arcsec2rad**2*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + \
+        self.timedelay = -self.Dt/cgs.c*cgs.arcsec2rad**2*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + \
                                    self.images[1]*self.source - self.lenspot(self.images[0]) + \
                                    self.lenspot(-self.images[1]))/(self.h/default_cosmo['h'])
 
