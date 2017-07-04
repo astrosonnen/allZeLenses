@@ -125,7 +125,7 @@ class NfwDev:
             self.xminmag = brentq(lambda x: abs(self.mu(x)) - min_mag, self.magmin, self.rein-eps, xtol=eps)
             self.yminmag = -self.xminmag + self.alpha(self.xminmag)
 
-    def get_images(self):
+    def get_images(self, xtol=1e-8):
 
         rmin = self.reff/50.
         rmax = 10.*self.reff
@@ -134,8 +134,8 @@ class NfwDev:
         if imageeq(self.radcrit)*imageeq(rmax) >= 0. or imageeq(-rmax)*imageeq(-self.radcrit) >= 0.:
             self.images = (-np.inf, np.inf)
         else:
-            xa = brentq(imageeq, rmin, rmax, xtol=1e-4)
-            xb = brentq(imageeq, -rmax, -self.radcrit, xtol=1e-4)
+            xa = brentq(imageeq, rmin, rmax, xtol=xtol)
+            xb = brentq(imageeq, -rmax, -self.radcrit, xtol=xtol)
             self.images = (xa, xb)
 
     def get_timedelay(self):
