@@ -5,7 +5,7 @@ import pymc
 day = 24.*3600.
 
 
-def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1, mhalo_prior=(13., 0.5), mstar_prior=(11.5, 0.5), alpha_prior=(0., 0.2), cvir_prior=(0.877, 0.3)):
+def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1, mhalo_prior=(13., 0.5), mstar_prior=(11.5, 0.5), alpha_prior=(0., 0.2), cvir_prior=(0.877, 0.3), max_fcaust=1.):
 
     model_lens = lens_models.NfwDev(zd=lens.zd, zs=lens.zs, mstar=lens.mstar, mhalo=lens.mhalo, \
                                     reff_phys=lens.reff_phys, cvir=lens.cvir, images=lens.images, source=lens.source)
@@ -39,7 +39,7 @@ def fit_nfwdev_interimprior(lens, nstep=15000, burnin=5000, thin=1, mhalo_prior=
 
         return model_lens.caustic
 
-    s2_par = pymc.Uniform('s2', lower=0., upper=caustic**2, value=lens.source**2)
+    s2_par = pymc.Uniform('s2', lower=0., upper=(max_fcaust*caustic)**2, value=lens.source**2)
 
     @pymc.deterministic()
     def images(mstar=mstar_par, mhalo=mhalo_par, s2=s2_par, cvir=c_par):
