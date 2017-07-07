@@ -86,7 +86,8 @@ def nfw_mhalo_given_mstar(nlens=1000, mstar_mu=11.5, mstar_sig=0.3, mhalo_mu=13.
 
 def simple_reality_sample(nlens=1000, mstar_mu=11.5, mstar_sig=0.1, mhalo_mu=13.0, mhalo_sig=0.3, mstar_mhalo=0.8, \
                           cvir_sig=0.1, cvir_mu=0.877, cvir_beta=-0.094, aimf_mu=0., aimf_sig=0.05, logreff_mu=0.46, \
-                          mstar_err=0.1, radmagrat_err=0.020, imerr=0.1, dt_err=5., h=0.7, min_mag=0.5):
+                          mstar_err=0.1, radmagrat_err=0.020, imerr=0.1, dt_err=5., h=0.7, min_mag=0.5, \
+                          max_fcaust=None):
 
     # redshift distribution of lenses: uniform between 0.1 and 0.3 (hardcoded)
     zds = np.random.rand(nlens)*0.2+0.2
@@ -137,7 +138,12 @@ def simple_reality_sample(nlens=1000, mstar_mu=11.5, mstar_sig=0.1, mhalo_mu=13.
         lens.get_xy_minmag(min_mag=min_mag)
 
         # source position: uniform distribution in a circle
-        ysource = (np.random.rand(1))**0.5*lens.yminmag
+        if max_fcaust is not None:
+            ymax = lens.caustic * max_fcaust
+        else:
+            ymax = lens.yminmag
+
+        ysource = (np.random.rand(1))**0.5*ymax
 
         lens.source = ysource
         lens.get_images()
