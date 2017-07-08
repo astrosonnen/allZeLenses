@@ -80,6 +80,8 @@ def infer_simple_reality_interimprior(guess, chains, dt_obs, dt_err, nstep=15000
         bad = chain['timedelay'] != chain['timedelay']
         chain['timedelay'][bad.flatten()] = 0.
 
+        chain['s2_norm'] = (chain['source']/chain['caustic'])**2
+
         tchains.append(chain)
 
     #defines the hyper-parameters
@@ -95,13 +97,16 @@ def infer_simple_reality_interimprior(guess, chains, dt_obs, dt_err, nstep=15000
     aimf_mu = pymc.Uniform('aimf_mu', lower=-0.2, upper=0.2, value=guess['aimf_mu'])
     aimf_sig = pymc.Uniform('aimf_sig', lower=0., upper=0.5, value=guess['aimf_sig'])
 
+    s2_loga = pymc.Uniform('loga', lower=0., upper=1., value=0.)
+    s2_logb = pymc.Uniform('logb', lower=-1., upper=1., value=0.)
+
     h_par = pymc.Uniform('h', lower=0.2, upper=1.5, value=0.7)
 
-    pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig, aimf_mu, aimf_sig, h_par]
+    pars = [mhalo_mu, mhalo_sig, mstar_mhalo, mstar_mu, mstar_sig, aimf_mu, aimf_sig, h_par, s2_loga, s2_logb]
 
     @pymc.deterministic(name='like')
     def like(mhalo_mu=mhalo_mu, mhalo_sig=mhalo_sig, mstar_mhalo=mstar_mhalo, mstar_mu=mstar_mu, mstar_sig=mstar_sig, \
-             aimf_mu=aimf_mu, aimf_sig=aimf_sig, h=h_par):
+             aimf_mu=aimf_mu, aimf_sig=aimf_sig, h=h_par, s2_loga=s2_loga, s2_logb=s2_logb):
 
         totlike = 0.
 
@@ -112,13 +117,15 @@ def infer_simple_reality_interimprior(guess, chains, dt_obs, dt_err, nstep=15000
             ms_term = 1./mstar_sig*np.exp(-(mglob_model - tchains[i]['mstar'])**2/(2.*mstar_sig**2))
             a_term = 1./aimf_sig*np.exp(-0.5*(aimf_mu - tchains[i]['alpha'])**2/aimf_sig**2)
 
+            s2_term = beta.pdf(tchains[i]['s2_norm'], 10.**s2_loga, 10.**s2_logb)
+
             interim_prior = 1./0.3*np.exp(-0.5*(tchains[i]['mhalo'] - 13.)**2/0.5**2)*\
                             1./0.5*np.exp(-0.5*(tchains[i]['mstar'] - 11.5)**2/0.5**2)*\
                             1./0.2*np.exp(-0.5*(tchains[i]['alpha'] - 0.)**2/0.2**2)
 
             dt_term = 1./dt_err[i]*np.exp(-0.5*(dt_obs[i] - tchains[i]['timedelay']/(h/0.7))**2/dt_err[i]**2)
 
-            term = (mh_term*ms_term*a_term*dt_term/interim_prior).mean()
+            term = (mh_term*ms_term*a_term*dt_term*s2_term/interim_prior).mean()
             totlike += np.log(term)
 
         return totlike
