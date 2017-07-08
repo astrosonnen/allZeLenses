@@ -154,7 +154,7 @@ def fit_nfwdev_fixsbound(lens, nstep=15000, burnin=5000, thin=1, mhalo_prior=(13
 
         return model_lens.caustic
 
-    s2_par = pymc.Uniform('s2', lower=0., upper=xA**2, value=lens.source**2)
+    s2_par = pymc.Uniform('s2', lower=0., upper=xa_obs**2, value=lens.source**2)
 
     @pymc.deterministic()
     def images(mstar=mstar_par, mhalo=mhalo_par, s2=s2_par, cvir=c_par):
