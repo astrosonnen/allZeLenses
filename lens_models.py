@@ -3,6 +3,8 @@ from mass_profiles import sersic as sersic_profile, NFW as NFW_profile
 from scipy.optimize import brentq, minimize_scalar
 from allZeTools import cgsconstants as cgs
 from cosmolopy import distance, density
+from scipy.special import hyp2f1
+
 
 default_cosmo = {'omega_M_0': 0.3, 'omega_lambda_0': 0.7, 'omega_k_0': 0., 'h': 0.7}
 
@@ -388,6 +390,7 @@ class powerlaw:
         self.imB = None
 
         self.obs_gamma = obs_gamma
+        self.obs_images = obs_images
 
         self.ds = distance.angular_diameter_distance(self.zs, **default_cosmo)
         self.dds = distance.angular_diameter_distance(self.zs, self.zd, **default_cosmo)
@@ -437,26 +440,25 @@ class powerlaw:
         return ((self.gamma - 1.)*self.m(x)/x**3)/self.mu_r(x) + \
                (-(1.-self.gamma)*(2.-self.gamma)/self.rein*(x/self.rein)**(-self.gamma))/self.mu_t(x)
 
-    def get_xy_minmag(self, min_mag=0.5):
+    def get_xy_minmag(self, min_mag=0.5, xtol=1e-4):
 
-        xmin = 1e-4*self.rein
-        xmax = self.rein*0.99
-        eps = 1e-4*self.rein
+        xmin = xtol
+        xmax = self.rein - xtol
 
         if self.gamma < 2.:
             self.get_caustic()
             # finds the minimum magnification between the radial and tangential critical curves
 
-            self.magmin = brentq(self.ddetA, self.radcrit + eps, self.rein - eps, xtol=eps)
+            self.magmin = brentq(self.ddetA, self.radcrit + xtol, xmax, xtol=xtol)
             if abs(self.mu(self.magmin)) > min_mag:
                 self.xminmag = self.radcrit
                 self.yminmag = self.caustic
             else:
-                self.xminmag = brentq(lambda x: abs(self.mu_r(x) * self.mu_t(x)) - min_mag, self.magmin, self.rein-eps, xtol=eps)
+                self.xminmag = brentq(lambda x: abs(self.mu_r(x) * self.mu_t(x)) - min_mag, self.magmin, xmax, xtol=xtol)
                 self.yminmag = -self.xminmag + self.alpha(self.xminmag)
 
         else:
-            self.xminmag = brentq(lambda x: abs(self.mu_r(x) * self.mu_t(x)) - min_mag, xmin, xmax, xtol=eps)
+            self.xminmag = brentq(lambda x: abs(self.mu_r(x) * self.mu_t(x)) - min_mag, xmin, xmax, xtol=xtol)
             self.yminmag = -self.xminmag + self.alpha(self.xminmag)
 
 
@@ -478,6 +480,139 @@ class powerlaw:
         else:
             xa = brentq(imageeq, self.rein, rmax, xtol=xtol)
             xb = brentq(imageeq, -self.rein, -rmin, xtol=xtol)
+            self.images = (xa, xb)
+
+    def get_timedelay(self):
+        self.timedelay = -self.Dt/cgs.c*cgs.arcsec2rad**2*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + \
+                                   self.images[1]*self.source - self.lenspot(self.images[0]) + \
+                                   self.lenspot(-self.images[1]))/(self.h/default_cosmo['h'])
+
+    def get_radmag_ratio(self):
+        radmag_A = (1. + self.m(self.images[0])/self.images[0]**2 - 2.*self.kappa(self.images[0]))**(-1)
+        radmag_B = (1. + self.m(self.images[1])/self.images[1]**2 - 2.*self.kappa(self.images[1]))**(-1)
+        self.radmag_ratio = radmag_A/radmag_B
+
+    def make_grids(self, err=0.01, nsig=3.):
+        eps = 1e-4 * self.images[0]
+
+        tol = 0.1*err
+        x0A = self.images[0] - nsig*err
+        x0A = x0A - x0A%tol
+        x1A = self.images[0] + nsig*err
+        x1A = x1A - x1A%tol
+        gridA = np.arange(x0A, x1A, tol)
+
+        x0B = self.images[1] - nsig*err
+        x0B = x0B - x0B%tol
+        x1B = -max(eps, -(self.images[1] + nsig*err))#, self.radcrit)
+        x1B = x1B - x1B%tol
+        gridB = np.arange(x0B,x1B,tol)
+
+        self.grids = (gridA, gridB)
+
+    def fast_images(self):
+
+        self.images = []
+        for grid in self.grids:
+            dx = grid[1] - grid[0]
+            ys = grid - self.alpha(grid)
+            diff = (self.source - ys[:-1])*(self.source - ys[1:])
+            found = diff <= 0.
+            for x in grid[:-1][found]:
+                self.images.append(x+0.5*dx)
+
+
+class cored_powerlaw:
+
+    def __init__(self, zd=0.3, zs=2., h=0.7, rein=1., rc=1e-4, gamma=2., images=[], source=0., \
+                 obs_images=None, obs_gamma=None):
+
+        self.zd = zd
+        self.zs = zs
+        self.h = h
+
+        self.rein = rein
+        self.rc = rc
+        self.gamma = gamma
+
+        self.caustic = None
+        self.radcrit = None
+        self.xminmag = None
+        self.yminmag = None
+        self.magmin = None
+
+        self.source = source
+        self.images = images
+        self.timedelay = None
+        self.grids = None
+        self.radmag_ratio = None
+        self.imA = None
+        self.imB = None
+
+        self.obs_gamma = obs_gamma
+        self.obs_images = obs_images
+
+        self.ds = distance.angular_diameter_distance(self.zs, **default_cosmo)
+        self.dds = distance.angular_diameter_distance(self.zs, self.zd, **default_cosmo)
+        self.dd = distance.angular_diameter_distance(self.zd, **default_cosmo)
+
+        self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*self.ds*self.dd/self.dds*cgs.Mpc*cgs.arcsec2rad**2
+        self.arcsec2kpc = cgs.arcsec2rad*self.dd*1000.
+        self.Dt = self.dd*self.ds/self.dds*cgs.Mpc*(1. + self.zd)
+
+    def E0(self):
+        return self.rein**2 * (3. - self.gamma)/((self.rein**2 + self.rc**2)**(0.5*(3.-self.gamma)) - self.rc**(3.-self.gamma))
+
+    def kappa(self, x):
+        return 0.5*self.E0() / (x**2 + self.rc**2)**(0.5*(self.gamma - 1.))
+
+    def m(self, x):
+        return self.E0() /(3. - self.gamma)*self.rc**(3. - self.gamma)*(((abs(x)/self.rc)**2 + 1.)**(0.5*(3-self.gamma)) - 1.)
+
+    def alpha(self, x):
+        return self.m(x)/x
+
+    def lenspot(self, x):
+        return self.E0() *self.rc**(3.-self.gamma)/(3.-self.gamma)*(1./(3.-self.gamma)*(x/self.rc)**(3.-self.gamma)*\
+                hyp2f1(0.5*(self.gamma - 3.), 0.5*(self.gamma - 3.), 0.5*(self.gamma - 1.), -(self.rc/x)**2) \
+                                                      - np.log(x/self.rc))
+
+
+    def get_caustic(self, xtol=1e-8):
+
+        rmin = xtol
+        rmax = self.rein
+
+        radial_invmag = lambda r: 2.*self.kappa(r) - self.m(r)/r**2 - 1.
+
+        if radial_invmag(rmin)*radial_invmag(rmax) > 0.:
+            rcrit = rmin
+        else:
+            rcrit = brentq(radial_invmag, rmin, rmax, xtol=xtol)
+
+        ycaust = -(rcrit - self.alpha(rcrit))
+        self.caustic = ycaust
+        self.radcrit = rcrit
+
+    def mu_t(self, x):
+        return (1. - self.m(x)/x**2)**(-1.)
+
+    def mu(self, x):
+        return self.mu_r(x) * self.mu_t(x)
+
+    def get_images(self, xtol=1e-6):
+
+        self.get_caustic()
+
+        rmin = xtol
+        rmax = 4.*self.rein
+
+        imageeq = lambda r: r - self.alpha(r) - self.source
+        if imageeq(rmin)*imageeq(rmax) >= 0.:# or imageeq(-rmax)*imageeq(rmin) >= 0.:
+            self.images = (-np.inf, np.inf)
+        else:
+            xa = brentq(imageeq, self.rein, rmax, xtol=xtol)
+            xb = brentq(imageeq, -self.rein, -self.radcrit, xtol=xtol)
             self.images = (xa, xb)
 
     def get_timedelay(self):
