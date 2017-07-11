@@ -655,10 +655,11 @@ class cored_powerlaw:
                 self.images.append(x+0.5*dx)
 
 class sps_ein_break: #spherical power-law with a break at the Einstein radius
-    
-    def __init__(self,zd=0.3,zs=2.,rein=1.,gamma=2.,beta=0.,images=[],source=0.):
+
+    def __init__(self, zd=0.3, zs=2., rein=1., gamma=2., beta=0., images=[], source=0., h=0.7):
         self.zd = zd
         self.zs = zs
+        self.h = h
         self.rein = rein
         self.gamma = gamma
         self.beta = beta
@@ -670,14 +671,20 @@ class sps_ein_break: #spherical power-law with a break at the Einstein radius
         self.grids = None
         self.radmag_ratio = None
 
-        self.arcsec2kpc = cgs.arcsec2rad*cosmology.Dang(self.zd)/cgs.kpc
-        self.Dt = cosmology.Dang(self.zd)*cosmology.Dang(self.zs)/cosmology.Dang(self.zd,self.zs)/cgs.c*(1. + self.zd)/cgs.c
- 
+        self.ds = distance.angular_diameter_distance(self.zs, **default_cosmo)
+        self.dds = distance.angular_diameter_distance(self.zs, self.zd, **default_cosmo)
+        self.dd = distance.angular_diameter_distance(self.zd, **default_cosmo)
+
+        self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*self.ds*self.dd/self.dds*cgs.Mpc/cgs.M_Sun*cgs.arcsec2rad**2
+        self.arcsec2kpc = cgs.arcsec2rad*self.dd*1000.
+
+        self.Dt = self.dd*self.ds/self.dds*cgs.Mpc*(1. + self.zd)
+
     def const(self):
-	return (2.**(self.beta - 1.)*(2. + self.beta/(3. - self.gamma)))**(-1)
+        return (2.**(self.beta - 1.)*(2. + self.beta/(3. - self.gamma)))**(-1)
 
     def kappa(self,x):
-	stuff = self.beta*(self.beta - 1.)/(3. - self.gamma)*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein)**(self.beta - 2.) + self.beta*(2. + 1./(3. - self.gamma))*(abs(x)/self.rein)**(2. - self.gamma)*(1. + abs(x)/self.rein)**(self.beta - 1.) + (3. - self.gamma)*(1. + abs(x)/self.rein)**self.beta*(abs(x)/self.rein)**(1. - self.gamma)
+        stuff = self.beta*(self.beta - 1.)/(3. - self.gamma)*(abs(x)/self.rein)**(3. - self.gamma)*(1. + abs(x)/self.rein)**(self.beta - 2.) + self.beta*(2. + 1./(3. - self.gamma))*(abs(x)/self.rein)**(2. - self.gamma)*(1. + abs(x)/self.rein)**(self.beta - 1.) + (3. - self.gamma)*(1. + abs(x)/self.rein)**self.beta*(abs(x)/self.rein)**(1. - self.gamma)
         return 0.5*stuff*self.const()
 
     def m(self,x):
@@ -705,22 +712,21 @@ class sps_ein_break: #spherical power-law with a break at the Einstein radius
         self.caustic = ycaust
         self.radcrit = rcrit
 
-
     def get_images(self, xmax=10., xtol=1e-4):
 
-	self.get_caustic()
+        self.get_caustic()
 
-	if self.source < min(self.caustic, xmax):
-	    imageeq = lambda r: r - self.alpha(r) - self.source
-	    xA = brentq(imageeq, self.rein, xmax, xtol=xtol)
-	    xB = brentq(imageeq, -self.rein, -max(self.radcrit, eps), xtol=xtol)
-	    self.images = (xA, xB)
-	else:
-	    self.images = (-99., 99.)
-
+        if self.source < min(self.caustic, xmax):
+            imageeq = lambda r: r - self.alpha(r) - self.source
+            xA = brentq(imageeq, self.rein, xmax, xtol=xtol)
+            xB = brentq(imageeq, -self.rein, -max(self.radcrit, eps), xtol=xtol)
+            self.images = (xA, xB)
+        else:
+            self.images = (-99., 99.)
 
     def get_time_delay(self):
-        self.timedelay = -self.Dt*(0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + self.images[1]*self.source - self.lenspot(self.images[0]) + self.lenspot(-self.images[1]))
+        angpart = (0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + self.images[1]*self.source - self.lenspot(self.images[0]) + self.lenspot(-self.images[1]))
+        self.timedelay = -self.Dt/cgs.c*cgs.arcsec2rad**2*angpart/(self.h/default_cosmo['h'])
 
     def get_radmag_ratio(self):
         radmag_A = (1. + self.m(self.images[0])/self.images[0]**2 - 2.*self.kappa(self.images[0]))**(-1)
