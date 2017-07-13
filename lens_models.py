@@ -594,6 +594,9 @@ class cored_powerlaw:
         self.caustic = ycaust
         self.radcrit = rcrit
 
+    def mu_r(self, x):
+        return (1. + self.m(x)/x**2 - 2.*self.kappa(x))**(-1)
+
     def mu_t(self, x):
         return (1. - self.m(x)/x**2)**(-1.)
 
