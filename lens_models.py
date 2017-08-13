@@ -461,21 +461,21 @@ class powerlaw:
             self.xminmag = brentq(lambda x: abs(self.mu_r(x) * self.mu_t(x)) - min_mag, xmin, xmax, xtol=xtol)
             self.yminmag = -self.xminmag + self.alpha(self.xminmag)
 
-
     def get_images(self, xtol=1e-4):
 
-        self.get_caustic()
-        self.get_xy_minmag()
+        #self.get_caustic()
+        #self.get_xy_minmag()
 
         if self.gamma < 2.:
+            self.get_caustic()
             rmin = self.radcrit
             rmax = 2.*self.rein
         else:
-            rmin = self.xminmag
+            rmin = xtol
             rmax = 2.*self.rein
 
         imageeq = lambda r: r - self.alpha(r) - self.source
-        if imageeq(rmin)*imageeq(rmax) >= 0.:# or imageeq(-rmax)*imageeq(rmin) >= 0.:
+        if imageeq(self.rein)*imageeq(rmax) >= 0. or imageeq(-self.rein)*imageeq(-rmin) >= 0.:
             self.images = (-np.inf, np.inf)
         else:
             xa = brentq(imageeq, self.rein, rmax, xtol=xtol)
@@ -719,15 +719,18 @@ class sps_ein_break: #spherical power-law with a break at the Einstein radius
 
         self.get_caustic()
 
-        if self.source < min(self.caustic, xmax):
-            imageeq = lambda r: r - self.alpha(r) - self.source
-            xA = brentq(imageeq, self.rein, xmax, xtol=xtol)
-            xB = brentq(imageeq, -self.rein, -max(self.radcrit, eps), xtol=xtol)
-            self.images = (xA, xB)
-        else:
-            self.images = (-99., 99.)
+        imageeq = lambda r: r - self.alpha(r) - self.source
+        xmin = -max(self.radcrit, xtol)
 
-    def get_time_delay(self):
+        if imageeq(self.rein)*imageeq(xmax) >= 0. or imageeq(-self.rein)*imageeq(xmin) >= 0.:
+            self.images = (-np.inf, np.inf)
+        #if self.source < min(self.caustic, xmax):
+        else:
+            xA = brentq(imageeq, self.rein, xmax, xtol=xtol)
+            xB = brentq(imageeq, -self.rein, xmin, xtol=xtol)
+            self.images = (xA, xB)
+
+    def get_timedelay(self):
         angpart = (0.5*(self.images[0]**2 - self.images[1]**2) - self.images[0]*self.source + self.images[1]*self.source - self.lenspot(self.images[0]) + self.lenspot(-self.images[1]))
         self.timedelay = -self.Dt/cgs.c*cgs.arcsec2rad**2*angpart/(self.h/default_cosmo['h'])
 
@@ -736,5 +739,20 @@ class sps_ein_break: #spherical power-law with a break at the Einstein radius
         radmag_B = (1. + self.m(self.images[1])/self.images[1]**2 - 2.*self.kappa(self.images[1]))**(-1)
         self.radmag_ratio = radmag_A/radmag_B
 
+    def make_grids(self, err=0.01, nsig=3.):
+        tol = 0.1*err
+        x0A = self.images[0] - nsig*err
+        x0A = x0A - x0A%tol
+        x1A = self.images[0] + nsig*err
+        x1A = x1A - x1A%tol
+        gridA = np.arange(x0A, x1A, tol)
+
+        x0B = self.images[1] - nsig*err
+        x0B = x0B - x0B%tol
+        x1B = -max(tol,-(self.images[1] + nsig*err))#, self.radcrit)
+        x1B = x1B - x1B%tol
+        gridB = np.arange(x0B,x1B,tol)
+
+        self.grids = (gridA,gridB)
 
 
