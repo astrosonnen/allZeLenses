@@ -1453,7 +1453,7 @@ def fit_powerlaw(lens, nstep=15000, burnin=5000, thin=1):
 
     gamma_par = pymc.Uniform('gamma', lower=1.2, upper=2.8, value=2.)
     rein_par = pymc.Uniform('rein', lower=0.2*rein_guess, upper=3.*rein_guess, value=rein_guess)
-    s2_par = pymc.Uniform('s2', lower=0., upper=(2.*rein_guess)**2, value=(xA - model_lens.alpha(xA))**2)
+    s2_par = pymc.Uniform('s2', lower=0., upper=(xa_obs)**2, value=(xA - model_lens.alpha(xA))**2)
 
     @pymc.deterministic()
     def images(rein=rein_par, gamma=gamma_par, s2=s2_par):
