@@ -14,7 +14,7 @@ eps = 1e-15
 class NfwDev:
     
     def __init__(self, zd=0.3, zs=2., h=0.7, mstar=1e11, mhalo=1e13, reff_phys=1., cvir=5., images=[], source=0., \
-                 obs_images=None, obs_lmstar=None, obs_radmagrat=None, obs_timedelay=None, delta_halo=93.5):
+                 obs_images=None, obs_lmstar=None, obs_radmagrat=None, obs_timedelay=None, delta_halo=200.):
 
         self.zd = zd
         self.zs = zs
@@ -381,7 +381,7 @@ class NfwGradDev:
 class NfwSer:
 
     def __init__(self, zd=0.3, zs=2., h70=1.0, mstar=1e11, mhalo=1e13, reff_phys=1., ns=4., cvir=5., images=[], \
-                 source=0., obs_images=None, obs_lmstar=None, obs_radmagrat=None, obs_timedelay=None, delta_halo=93.5):
+                 source=0., obs_images=None, obs_lmstar=None, obs_radmagrat=None, obs_timedelay=None, delta_halo=200.):
 
         self.zd = zd
         self.zs = zs
