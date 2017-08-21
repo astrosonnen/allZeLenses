@@ -10,7 +10,7 @@ import os
 
 grid_dir = os.environ.get('ATL_GRIDDIR')
 
-f = open(grid_dir+'deV_mlgrad_M2d_grid.dat','r')
+f = open(grid_dir+'deV_mlgrad_m2d_grid.dat','r')
 M2d_grid = pickle.load(f)
 f.close()
 
