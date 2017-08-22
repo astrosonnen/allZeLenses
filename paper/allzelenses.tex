@@ -382,7 +382,7 @@ As expected, we can see a trend between $\xi$ and the inferred value of $H_0$, t
 We then take the weighted mean of the individual measurements, to obtain an ensemble measurement of $H_0$. We use the inverse square errors on the individual $H_0$ measurements as weights.
 The result is plotted in \Fref{fig:plH0}. The inference is biased towards larger values by about 10\%.
 
-\section{Flexible models}
+\section{Flexible models}\label{sect:gnfw}
 
 Power-law models, fitted to image position and radial magnification ratios, cannot provide an accurate estimate of the time-delay of the lenses in our mock sample.
 In order to gain in accuracy, we need to increase the flexibility of the model used in the fit, adding at least one degree of freedom to the radial density profile, so that the relation between the second and third derivative of the potential is no longer fixed.
@@ -438,8 +438,8 @@ In addition to the free parameters of the model (stellar mass $M_*$, projected d
 \end{figure*}
 %
 
-We fit all 100 lenses in the mock, then, similarly to \Sref{sect:pow}, we obtain an inference on $H_0$ for each lens.
-However, unlike in \Sref{sect:pow}, we add a 1 day observational uncertainty to the time delay.
+We fit all 100 lenses in the mock, then, similarly to \Sref{sect:pl}, we obtain an inference on $H_0$ for each lens.
+However, unlike in \Sref{sect:pl}, we add a 1 day observational uncertainty to the time delay.
 While the goal of the previous fit was to show that power-law models give a biased answer, here we wish to show that we can recover the truth even in case of observational errors.
 Adding noise to the time delay not only increases the error bar on individual measurements, but it also shifts the weight towards systems with larger image asymmetry, for which the time delay is larger and, therefore, more easily measurable.
 Increasing the weight for systems with large asymmetry can in principle bias the result, because, as \Eref{eq:dt2nd} shows, going to larger values of $\Delta\theta_A$ requires a more accurate knowledge of higher derivatives of the potential in order to make accurate time delay predictions.
