@@ -314,15 +314,15 @@ class gNfwDev:
 
     def get_images(self, xtol=1e-8):
 
-        rmin = self.reff/50.
+        rmin = max(self.radcrit, self.reff/50.)
         rmax = 10.*self.reff
 
         imageeq = lambda r: r - self.alpha(r) - self.source
-        if imageeq(self.radcrit)*imageeq(rmax) >= 0. or imageeq(-rmax)*imageeq(-self.radcrit) >= 0.:
+        if imageeq(rmin)*imageeq(rmax) >= 0. or imageeq(-rmax)*imageeq(-rmin) >= 0.:
             self.images = (-np.inf, np.inf)
         else:
             xa = brentq(imageeq, rmin, rmax, xtol=xtol)
-            xb = brentq(imageeq, -rmax, -self.radcrit, xtol=xtol)
+            xb = brentq(imageeq, -rmax, -rmin, xtol=xtol)
             self.images = (xa, xb)
 
     def get_timedelay(self):
