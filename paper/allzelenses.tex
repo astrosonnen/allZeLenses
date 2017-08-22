@@ -23,6 +23,10 @@
 \def\radmagrat{r_{\mu_r}}
 
 \def\tein{\theta_{\mathrm{E}}}
+\def\reff{R_e}
+\def\sigmae{\sigma_{e2}}
+\def\mdme{M_{\mathrm{DM},e}}
+\def\gammadm{\gamma_{\mathrm{DM}}}
 
 \def\hyperp{\boldsymbol{\eta}}
 \def\individ{\boldsymbol{\psi}}
@@ -43,14 +47,14 @@
 
 \begin{document}
 
-\title{On time delay cosmography with doubly-imaged quasars}
+\title{On power-law profiles in time delay cosmography}
 \author[Sonnenfeld \& Marshall]{
 Alessandro~Sonnenfeld,$^{1}$\thanks{E-mail:alessandro.sonnenfeld@ipmu.jp}
 Philip~J.~Marshall,$^{2}$
 \\
-$^{1}$Kavli Institute for the Physics and Mathematics of the Universe (WPI),The University of Tokyo Institutes for Advanced Study, The University of Tokyo, Kashiwa, Chiba 277-8583, Japan \\
+$^{1}$Kavli IPMU (WPI), UTIAS, The University of Tokyo, Kashiwa, Chiba 277-8583, Japan \\
+%$^{1}$Kavli Institute for the Physics and Mathematics of the Universe (WPI),The University of Tokyo Institutes for Advanced Study, The University of Tokyo, Kashiwa, Chiba 277-8583, Japan \\
 $^{2}$ Kavli Institute for Particle Astrophysics and Cosmology, Stanford University, 452 Lomita Mall, Stanford, CA 94035, USA\\
-%$^{1}$Kavli IPMU (WPI), UTIAS, The University of Tokyo, Kashiwa, Chiba 277-8583, Japan \\
 }
 
 \maketitle
@@ -58,15 +62,15 @@ $^{2}$ Kavli Institute for Particle Astrophysics and Cosmology, Stanford Univers
 %-------------------------------------------------------------------------------
 \begin{abstract}
 Time-delay lensing is a mature and competitive cosmological probe.
-However, it suffers from the well-known problem of the mass-sheet degeneracy.
-
-However, it has been recently pointed out how too rigid assumptions on the density profile of the lens can bias the inference on the Hubble constant.
+However, it suffers from the well-known problem of the mass-sheet degeneracy:
+too rigid assumptions on the density profile of the lens can bias the inference on the Hubble constant.
 We investigate in detail the degeneracy between the choice of the lens density profile and the inference on cosmology, focusing on double systems.
-By expanding lensing observables in terms of the local derivatives of the lens potential around the Einstein radius, 
+By expanding lensing observables in terms of the local derivatives of the lens potential around the Einstein radius, in the case of circular lenses,
 we show that three degrees of freedom in the radial direction are necessary to achieve a few percent accuracy in the time-delay distance, even in cases where the asymmetry in the image configuration is relatively small.
 We also show that, while the time delay is strongly dependent on the second derivative of the potential, observables typically used to constrain lens models in time-delay studies, such as image position and radial magnification information, are mostly sensitive to the first and third derivatives, making it very challenging to accurately determine time-delay distances with lensing data alone.
 We generate an ensemble of mock observations and show that the assumption of a power-law density profile results in a 10\% bias on $H_0$.
-
+Using a more flexible model and adding velocity dispersion constraints allows, under optimistic assumptions on the dynamical modeling, to obtain an inference with 1\% accuracy.
+Although all of our treatment is based on the assumption of axisymmetry, our findings can be generalized to cases with moderate ellipticity.
 \end{abstract}
 
 \begin{keywords}
@@ -76,13 +80,11 @@ We generate an ensemble of mock observations and show that the assumption of a p
 %-------------------------------------------------------------------------------
 \section{Introduction}\label{sect:intro}
 
-One of the obstacles in time delay lens cosmography is set by the mass sheet degeneracy (MST).
+One of the obstacles in time delay lens cosmography is set by the mass sheet degenerac.
 \citet{S+S13} showed that the assumption of a power-law density profile can introduce a large bias in the inferred value of the Hubble constant, in cases when the true density profile is not a pure power-law.
-Here we investigate further the issue of the MST.
+Here we investigate further this issue.
 
 We wish to determine what is the minimum number of degrees of freedom in the lens density profile in order to reproduce lensing observables and time delays within a given accuracy goal.
-We then discuss whether the MST can be broken statistically, by combining a large number of lenses.
-
 We limit our study to double image systems. Furthermore, we assume circular symmetry throughout our work. Most of the results derived here can be generalized to the non-axisymmetric case.
 
 \section{Lensing observables and lens potential derivatives}\label{sect:pot}
@@ -94,7 +96,7 @@ We wish to determine which aspects of $\psi(\theta)$ are different lensing obser
 This has been done in the general, non-asisymmetric case, by \cite{W+B16}, by expanding the lens potential around the center of the lens.
 Here we adopt a similar approach, but focus on derivatives of the potential around the Einstein radius.
 
-Let us consider a source at position $\beta_s>0$, liyng within the radial caustic.
+Let us consider a source at position $\beta_s>0$, lying within the radial caustic.
 The corresponding image positions are determined by the lens equation:
 \begin{equation}
 \beta_s = \theta  - \alpha(\theta).
@@ -159,8 +161,11 @@ that is, the image separation is approximately equal to twice the Einstein radiu
 
 Let us now consider the magnification. Absolute magnification is only observable if the lensed source is a standard candle, or a standard ruler.
 The ratio of magnifications of different images of the same source is more easily accessible. Still, in the case of lensed quasars, the magnification ratio due to the main lens is difficult to measure accurately, due to microlensing or the presence of substructure.
-Nevertheless, when detailed lens modeling is performed, in which the full surface brightness distribution of a lensed extended source is reproduced, some constraints on magnification can be obtained.
-This constraint from extended source modeling is mostly a measurement of radial magnification ratio. 
+Nevertheless, some constraints on magnification can be obtained by careful modeling of the images of a lensed extended source.
+In detailed time delay lens studies, for instance, the slope of the density profile of the lens is usually constrained by fitting a parametrized model to the full surface brightness distribution of the quasar host galaxy. %a lensed extended source,
+%which in the case of lensed quasars is usually the quasar host galaxy.
+%Nevertheless, when detailed lens modeling is performed, in which the full surface brightness distribution of a lensed extended source is reproduced, some constraints on magnification can be obtained.
+This constraint from extended source modeling is essentially a measurement of radial magnification ratio. 
 When an extended source is lensed into two arcs at two different distances from the lens, the ratio between the arc widths, which is directly observable, is given by the ratio of radial magnifications at the two positions.
 
 Radial magnification, for a circular lens, is defined as
@@ -377,11 +382,140 @@ As expected, we can see a trend between $\xi$ and the inferred value of $H_0$, t
 We then take the weighted mean of the individual measurements, to obtain an ensemble measurement of $H_0$. We use the inverse square errors on the individual $H_0$ measurements as weights.
 The result is plotted in \Fref{fig:plH0}. The inference is biased towards larger values by about 10\%.
 
-\section{More flexible models}
+\section{Flexible models}
 
+Power-law models, fitted to image position and radial magnification ratios, cannot provide an accurate estimate of the time-delay of the lenses in our mock sample.
+In order to gain in accuracy, we need to increase the flexibility of the model used in the fit, adding at least one degree of freedom to the radial density profile, so that the relation between the second and third derivative of the potential is no longer fixed.
+
+We consider a composite model, with a de Vaucouleurs profile describing the stellar component and a generalized NFW profile (gNFW) to describe the dark matter halo \citep{Zha96}.
+\begin{equation}
+\rho_{\mathrm{gNFW}}(r) = \frac{\rho_0}{(r/r_s)^\gammadm (1 + r/r_s)^{3 - \beta}}.
+\end{equation}
+The density profile of a gNFW profile has an inner slope of $\gammadm$ and falls off as $r^{-3}$ at large radii. It reduces to a pure NFW profile for $\gammadm=1$.
+
+We assume that the effective radius of the de Vaucouleurs profile is known exactly.
+This assumption leaves one degree of freedom for the stellar component: its total mass.
+The dark matter component has three free parameters: mass, inner slope $\gammadm$, and scale radius $r_s$.
+We wish to work with a family of models with only three degrees of freedom in total.
+Therefore, we arbitrarily fix the scale radius of the halo to ten times the effective radius:
+\begin{equation}\label{eq:scaleradius}
+r_s = 10 \reff.
+\end{equation}
+%The free parameters of the model then are: stellar mass $M_*$, dark matter inner slope $\beta$, and a normalization for the dark matter halo. Since 
+Due to this choice, our model cannot provide a perfect description of the galaxies in our mock: although mock halos have an NFW density profile, their scale radius is assigned through a mass-concentration relation with scatter. Therefore they do not satisfy \Eref{eq:scaleradius}.
+Nevertheless, as we will show, this model can still allow us to make an accurate prediction on the time delay, thanks to its flexibility.
+%We do not expect this to be a problem in terms of accuracy on the time delay: our analysis in \Sref{sect:pot} guarantees that an accurate estimate of $\Delta t$ can be obtained 
+
+We have increased the number of degrees of freedom in the radial density profile from two to three.
+Obviously, this new model cannot be fully constrained with only two image positions and one measurement of the radial magnfication ratio.
+In order to make an inference on the time delay, additional constraints are needed.
+We consider the central velocity dispersion as a new observable.
+Velocity dispersion information is often used in time delay cosmology measurements to improve the precision and accuracy of the model \citep{Suy++14,Won++17}.
+
+For each mock lens, we use the spherical Jeans equation to calculate its surface brightness-weighted line-of-sight velocity dispersion, integrated within a circular aperture of radius $\reff/2$, which we denote $\sigmae$. We assume isotropic orbits. Then, we add a Gaussian noise with a $10\,\rm{km}\,{s}^{-1}$ scatter. We do not convolve the velocity dispersion by an artificial point spread function, for the sake of saving computational time.
+
+We fit our composite model to image position, radial magnification ratio and velocity dispersion of each mock lens. For a given set of parameter values, we calculate a model velocity dispersion in the same way we generated the data, by using the spherical Jeans equation under the assumption of isotropic orbits. Essentially, we are assuming that the line-of-sight structure and orbital anisotropy profile of the lens is known exactly, which is a very optimistic assumption.
+
+We parametrize the normalization of the dark matter halo in terms of the projected mass enclosed within $\reff$, labeled $\mdme$.
+We assume flat priors on $\log{M_*}$, $\log{\mdme}$, $\gammadm$ and the square of the source position.
+We first fit the model to lensing constraints only. The inference is plotted in \Fref{fig:onelens} (solid lines). As expected, image positions and radial magnification ratio alone cannot constrain the model, and the inference is largely driven by the prior.
+When velocity dispersion information is included, the model converges to a well defined solution (red contours in \Fref{fig:onelens}).
+%In \Fref{fig:onelens}, we show the inference on the model parameters for one lens in the mock sample (red contours). 
+In addition to the four parameter listed above, we also show the inference on the different derivatives of the lens potential, as well as the time delay.
+Significantly, the addition of velocity dispersion information helps narrow down the uncertainty on the second derivative of the lensing potential.
+As a result, the predicted time delay is accurate.
+%
+\begin{figure*}
+ \includegraphics[width=\textwidth]{gnfw_cornerplot.eps}
+ \caption{
+{\em Solid lines:} posterior probability distribution on the model parameters obtained by fitting a composite de Vaucouleurs + gNFW model to image position and radial magnification ratio of a mock lens.
+{\em Red contours:} inference obtained by adding velocity dispersion information.
+Different contour levels indicate the 68\%, 95\% and 99.7\% enclosed probability regions.
+The black dots indicate the true values.
+In addition to the free parameters of the model (stellar mass $M_*$, projected dark matter enclosed within the effective radius $\mdme$, inner dark matter slope $\gammadm$ and source position $\beta_s$), we show the inference on the second and third derivatives of the lens potential at the Einstein radius, as well as the time delay between the two images.
+}
+ \label{fig:onelens}
+\end{figure*}
+%
+
+We fit all 100 lenses in the mock, then, similarly to \Sref{sect:pow}, we obtain an inference on $H_0$ for each lens.
+However, unlike in \Sref{sect:pow}, we add a 1 day observational uncertainty to the time delay.
+While the goal of the previous fit was to show that power-law models give a biased answer, here we wish to show that we can recover the truth even in case of observational errors.
+Adding noise to the time delay not only increases the error bar on individual measurements, but it also shifts the weight towards systems with larger image asymmetry, for which the time delay is larger and, therefore, more easily measurable.
+Increasing the weight for systems with large asymmetry can in principle bias the result, because, as \Eref{eq:dt2nd} shows, going to larger values of $\Delta\theta_A$ requires a more accurate knowledge of higher derivatives of the potential in order to make accurate time delay predictions.
+
+Individual $H_0$ measurements and the weighted mean measurement over the whole sample are plotted in \Fref{fig:gnfw_indH0}.
+The Hubble constant is recovered at better than 1\% accuracy.
+%
+\begin{figure}
+ \includegraphics[width=\columnwidth]{gnfw_individual_H0.eps}
+ \caption{Inference on $H_0$ for each lens, obtained by fitting a composite de Vaueouleurs + gNFW model to image position, radial magnification ratio, velocity dispersion, and to time delay measurements with 1 day uncertainty.
+The quantity on the $x$ axis is parameter $\xi$ defined in \Eref{eq:xidef}, quantifying the deviation of the true density profile from that of a power-law.
+The dashed horizontal line marks the true value of $H_0$ used to create the mock ($70\,\rm{km}\,\rm{s}^{-1}\,\rm{Mpc}^{-1}$).
+The gray horizontal band shows the weighted mean inference on $H_0$, with its 68\% uncertainty region.
+}
+ \label{fig:gnfw_indH0}
+\end{figure}
+%
+
+The excellent agreement between the value of $H_0$ obtained with our flexible model thanks to the addition of velocity dispersion information raises a question: would it be possible to make a similarly accurate inference using power-law profiles, if we replace the radial magnification constraint with the velocity dispersion?
+As pointed out eariler, the radial magnification ratio is mostly sensitive to the third derivative of the potential. Although this piece of information can be use to get a high precision measurement of the power-law slope $\gamma$, it does not help in the prediction of the time delay, since an accurate knowledge of $\psiii$ is required to constrain the latter.
+
+We then revert to power-law models and fit them to image position and velocity dispersion data only.
+The individual inferences on $H_0$ and the ensemble measurement are plotted in \Fref{fig:pl_indH0_wdyn}.
+The population average Hubble constant is now only 2\% larger than the truth, a remarkable improvement compared to the 10\% bias obtained in \Sref{sect:pl} with purely lensing constraints.
+%
+\begin{figure}
+ \includegraphics[width=\columnwidth]{pl_impos_dyn_individual_H0.eps}
+ \caption{Inference on $H_0$ for each lens, obtained by fitting a power-law model to image position, velocity dispersion, and to time delay measurements with one day uncertainty.
+The quantity on the $x$ axis is parameter $\xi$ defined in \Eref{eq:xidef}, quantifying the deviation of the true density profile from that of a power-law.
+The dashed horizontal line marks the true value of $H_0$ used to create the mock ($70\,\rm{km}\,\rm{s}^{-1}\,\rm{Mpc}^{-1}$).
+The gray horizontal band shows the weighted mean inference on $H_0$, with its 68\% uncertainty region.
+}
+ \label{fig:pl_indH0_wdyn}
+\end{figure}
+%
 \section{Discussion}
 
+On the basis of simple analytical arguments, we predicted in \Sref{sect:pot} that, in order to model time delays with an accuracy of a few percent, a class of lens models with at least three degrees of freedom in the radial profile is needed.
+This conclusion cast doubts on the adequacy of power-law models in time delay cosmography studies.
+Indeed, tests performed on mock lensing observations showed that using power-law models can lead to a 10\% bias on the inference of the Hubble constant.
+However, this finding is in apparent contradiction with the last result shown in \Sref{sect:gnfw}: fitting the same power-law models to the quasar image position and velocity dispersion data, and ignoring magnification information, gives a much more accurate answer.
+
+The problem does not lie with power-law models themselves, but rather with the data used to constrain their parameters.
+In detailed lensing studies, the slope of the lens density profile is typically measured by fitting a power-law model to the surface brightness distribution of the arcs.
+However, as we argued in \Sref{sect:pot}, this is only a measurement of radial magnification ratio, which to first nontrivial order is mostly sensitive to the third derivative of the potential.
+The second derivative of the potential, more important for the determination of the time delay, is then assigned by a fixed relation, \Eref{eq:psiiipl_given_psiiii}, introducing a bias.
+
+A possible alternative, or complementary information, to radial magnification ratios, is the use of stellar kinematics.
+However, relying on velocity dispersion information to accurately constrain lens models is a difficult taks.
+Although our tests performed in \Sref{sect:gnfw} showed promising results, they were based on a set of optimistic assumptions: in particular, spherical symmetry and isotropic orbits.
+In real applications, projection effects and orbital anisotropy can introduce large biases if not carefully accounted for.
+Spatially resolved kinematic information, such as velocity measurements from integral field spectroscopy, is most likely necessary for an accuracy goal of a few percent.
+
+Our analytical treatment of \Sref{sect:pot}, as well as all of our tests, is based on a strong assumption: that of circular symmetry.
+Axisymmetric lenses are qualitatively different from more realistic models.
+For instance, their critical curves, isopotential and isodensity contours have all the same shape.
+This is not true in general, and, as a result, the equations derived in \Sref{sect:pot} are not strictly applicable to most lenses.
+
+One consequence of the departure from circular symmetry is that, for doubles, as the source crosses the tangential caustic, only one of the two images touches the critical curve.
+In other words, as $\Delta\theta_A$, interpreted as distance from the tangential critical curve in an appropriate coordinate frame, goes to zero, $\Delta\theta_B$ approaches a finite value.
+Nevertheless, for moderate ellipticities, our main results are still qualitatively correct.
+The time delay is still proportional, to leading order in image displacement from the critical curve, to the difference in deflection angles at the location of the two images.
+This introduces a dependence on the second derivative of the potential.
+
+The radial magnification ratio is, to first nontrivial order in image position, a difference in the radial eigenvalue of the lens Jacobian matrix, which introduces a dependence on the third derivative of the potential.
+Therefore, we expect, even in the general case, that radial magnification ratio information alone would not be sufficient to make an accurate time delay prediction.
+
+Another consequence of the assumption of spherical symmetry is 
+ the relatively large number of doubles with image positions close to the critical curve compared to real samples.
+Adding a realistic distribution in lens flattening would turn many of our mock lenses into four image systems.
+This limits somewhat our ability to generalize our results, especially because we limited our analysis to systems with small image asymmetry.
+Although in \Sref{sect:gnfw} we showed that a family of models with three parameters can give a very accurate description of the lenses in our mock, the same might not be true for systems with a significantly more asymmetric image configuraton, more typical of doubles, as the radial range over which the potential needs to be accurately characterized becomes larger.
+
 \section{Conclusion}
+
+
 
 \section*{acknowledgments}
 This work was supported by World Premier International Research Center Initiative (WPI Initiative), MEXT, Japan.
