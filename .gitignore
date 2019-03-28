@@ -1,5 +1,4 @@
 # LaTeX cruft:
-*.pdf
 *.dvi
 *.log
 *.aux

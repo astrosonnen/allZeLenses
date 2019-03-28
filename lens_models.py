@@ -239,10 +239,14 @@ class gNfwDev:
         self.rs = self.rs_phys/self.arcsec2kpc
         self.Dt = self.dd*self.ds/self.dds*cgs.Mpc*(1. + self.zd)
         self.rhoc = density.cosmo_densities(**default_cosmo)[0]*distance.e_z(self.zd, **default_cosmo)**2
+        self.xmin = 1.01*max(self.reff/50., 0.1*self.rs/50.)
+        self.xmax = 0.99*min(10.*self.reff, 100.*self.rs/50.)
  
     def normalize(self):
         self.halo = self.mdme/gNFW_profile.fast_M2d(self.reff, self.rs, self.beta)/self.S_cr
-
+        self.xmin = 1.01*max(self.reff/50., 0.1*self.rs/50.)
+        self.xmax = 0.99*min(10.*self.reff, 100.*self.rs/50.)
+ 
     def kappa(self, x):
         return self.halo*gNFW_profile.Sigma(abs(x), self.rs, self.beta) + self.mstar/self.S_cr*sersic_profile.I(abs(x), 4., self.reff)
 
@@ -269,15 +273,12 @@ class gNfwDev:
 
     def get_caustic(self):
 
-        rmin = self.reff/50.
-        rmax = 10.*self.reff
-
         radial_invmag = lambda r: 2.*self.kappa(r) - self.m(r)/r**2 - 1.
 
-        if radial_invmag(rmin)*radial_invmag(rmax) > 0.:
-            rcrit = rmin
+        if radial_invmag(self.xmin)*radial_invmag(self.xmax) > 0.:
+            rcrit = self.xmin
         else:
-            rcrit = brentq(radial_invmag, rmin, rmax)
+            rcrit = brentq(radial_invmag, self.xmin, self.xmax)
 
         ycaust = -(rcrit - self.alpha(rcrit))
         self.caustic = ycaust
@@ -287,12 +288,12 @@ class gNfwDev:
 
         tangential_invmag = lambda r: self.m(r)/r**2 - 1.
 
-        if tangential_invmag(self.reff/50.) < 0.:
+        if tangential_invmag(self.xmin) < 0.:
             self.rein = 0.
-        elif tangential_invmag(10.*self.reff) > 0.:
-            self.rein = 10.*self.reff
+        elif tangential_invmag(self.xmax) > 0.:
+            self.rein = self.xmax
         else:
-            tcrit = brentq(tangential_invmag, self.reff/50., 10.*self.reff)
+            tcrit = brentq(tangential_invmag, self.xmin, self.xmax)
             self.rein = tcrit
 
     def get_xy_minmag(self, min_mag=0.5):
@@ -1214,4 +1215,78 @@ class broken_alpha_powerlaw: #spherical power-law with a break at the Einstein r
 
     def psi3(self):
         return 1./self.rein * ((2. - self.gamma) * (1. - self.gamma) - self.beta * (2. - self.gamma) + self.beta * (1. + self.beta) / 4.)
+
+
+class powerlaw_ellpot:
+
+    def __init__(self, zd=0.3, zs=2., h=0.7, rein=1., gamma=2., q=1., images=[], source=0., \
+                 obs_images=None, obs_gamma=None):
+
+        self.zd = zd
+        self.zs = zs
+        self.h = h
+
+        self.rein = rein
+        self.gamma = gamma
+
+        self.b = self.rein*(3. - self.gamma)**(1./(self.gamma - 1.))
+
+        self.q = q
+
+        self.caustic = None
+        self.radcrit = None
+        self.xminmag = None
+        self.yminmag = None
+        self.magmin = None
+
+        self.source = source
+        self.images = images
+        self.timedelay = None
+        self.radmag_ratio = None
+        self.imA = None
+        self.imB = None
+
+        self.ds = distance.angular_diameter_distance(self.zs, **default_cosmo)
+        self.dds = distance.angular_diameter_distance(self.zs, self.zd, **default_cosmo)
+        self.dd = distance.angular_diameter_distance(self.zd, **default_cosmo)
+
+        self.S_cr = cgs.c**2/(4.*np.pi*cgs.G)*self.ds*self.dd/self.dds*cgs.Mpc*cgs.arcsec2rad**2
+        self.arcsec2kpc = cgs.arcsec2rad*self.dd*1000.
+        self.Dt = self.dd*self.ds/self.dds*cgs.Mpc*(1. + self.zd)
+
+    def get_b_from_rein(self):
+        self.b = self.rein*(3. - self.gamma)**(1./(self.gamma - 1.))
+
+    def get_rein_from_b(self):
+        self.rein = self.b/(3. - self.gamma)**(1./(self.gamma - 1.))
+
+    def kappa(self, x):
+        return 0.5*(self.b/abs(x))**(self.gamma - 1.)
+
+    def m(self, x):
+        r = (self.q*x[0]**2 + x[1]**2/self.q)**0.5
+        return self.b**(self.gamma - 1.)/(3. - self.gamma)*r**(3. - self.gamma)
+
+    def lenspot(self, x):
+        r = (self.q*x[0]**2 + x[1]**2/self.q)**0.5
+        return self.b**(self.gamma - 1.)/(3. - self.gamma)**2 * r**(3. - self.gamma)
+
+    def alpha(self, x):
+        r = (self.q*x[0]**2 + x[1]**2/self.q)**0.5
+        alpha_circ = self.m(x)/r
+        return (self.q*x[0]/r * alpha_circ, x[1]/self.q/r * alpha_circ)
+
+    def A(self, x):
+        r = (self.q*x[0]**2 + x[1]**2/self.q)**0.5
+        dpotdr = self.m(x)/r
+        d2potdr2 = (2. - self.gamma) * (r/self.rein)**(1. - self.gamma)
+
+        A11 = 1. - (self.q/r - self.q**2*x[0]**2/r**3)*dpotdr - self.q**2*x[0]**2/r**2*d2potdr2
+
+        A12 = x[0]*x[1]/r**2*(d2potdr2 - 1./r*dpotdr)
+
+        A22 = 1. - (1./self.q/r - x[1]**2/self.q/r**3)*dpotdr - x[1]**2/self.q**2/r**2*d2potdr2
+
+        return np.array(((A11, A12), (A12, A22)))
+
 

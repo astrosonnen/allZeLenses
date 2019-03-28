@@ -1,0 +1,50 @@
+\documentclass[letter]{article}
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{geometry}
+
+\def\pr{{\rm Pr}}
+%\newcommand{\boldsymbol}[1]{\mbox{\boldmath{${#1}$}}}
+\def\reff{R_e}
+\def\msps{M_*^{\mathrm{SPS}}}
+\def\mdm{M_{\mathrm{DM}}}
+\def\gammadm{\gamma_{\mathrm{DM}}}
+
+\begin{document}
+
+We want to measure $\pr(H_0|\left\{\boldsymbol{d}\right\})$, where $\left\{\boldsymbol{d}\right\}$ is the entire set of our data.
+The data consists of $N$ lenses, each with measurements of $z$, $\reff$, $\msps$, QSO image positions $\boldsymbol{\theta}_{\mathrm{QSO}}$, time delays $\vec{\Delta t}$, and possibly arc morphology $\boldsymbol{A}$.
+Curly brackets indicate the ensemble of lenses.
+
+We {\em assume} that lenses can be described with a de Vaucouleurs + gNFW profile, plus a constant sheet of mass.
+The model parameters of each lens are $\reff$, $M_*$, $\msps$, $\gammadm$, $\mdm$, $\kappa_{\mathrm{ext}}$, QSO position in the source plane $\boldsymbol{\beta}_{\mathrm{QSO}}$, source surface brightness $\boldsymbol{S}$. We indicate the entire set of parameters of a given lens with the symbol $\boldsymbol{\psi}$.
+
+We also {\em assume} that lenses are drawn from a parent distribution described by a set of macroparameters $\boldsymbol{\eta}$, so that for each lens there is a probability $\pr(\boldsymbol{\psi}|\boldsymbol{\eta})$ of it having parameters $\boldsymbol{\psi}$. We {\em assume} that $\pr(\boldsymbol{\psi}|\boldsymbol{\eta})$ can be factorized in the following way
+\begin{eqnarray}
+\pr(\boldsymbol{\psi}|\boldsymbol{\eta}) = & & \pr(z|\eta)\pr(M_*(z)|\boldsymbol{\eta})\pr(\reff(z,M_*)|\boldsymbol{\eta})\pr(\msps(M_*,z,\reff)|\boldsymbol{\eta})\pr(\mdm(M_*,z,\reff)|\boldsymbol{\eta}) \nonumber \\
+& & \pr(\gammadm(M_*,z,\reff)|\boldsymbol{\eta})\pr(\kappa_{\mathrm{ext}}|\boldsymbol{\eta}).
+\end{eqnarray}
+For simplicity, we can assume all factors in the above equation to be Gaussians, with mean and dispersion defined by the macroparameters $\boldsymbol{\eta}$, but we don't have to.
+We know for sure that $\pr(\kappa_{\mathrm{ext}}|\boldsymbol{\eta})$ must have median zero, unless we think that we select preferentially lenses in overdense (underdense) regions.
+
+The likelihood of measuring the data $\boldsymbol{d}$ given the true lens parameters and the cosmology is
+\begin{equation}
+\pr(\boldsymbol{d}|\boldsymbol{\psi},H_0) = \pr(\vec{\Delta t}|\boldsymbol{\psi},H_0)\pr(\boldsymbol{\theta}_{\mathrm{QSO}}|\boldsymbol{\psi})\pr(\boldsymbol{A}|\boldsymbol{\psi})\pr(\msps(\mathrm{obs})|\boldsymbol{\psi})\pr(\reff(obs)|\boldsymbol{\psi})
+\end{equation}
+Then the posterior probability distribution of the macroparameters and the cosmology is given by
+\begin{equation}
+\pr(\boldsymbol{\eta},H_0|\left\{\boldsymbol{d}\right\}) = \pr(\boldsymbol{\eta},H_0) \pr(\left\{\boldsymbol{d}\right\}|\boldsymbol{\eta},H_0) = \pr(\boldsymbol{\eta},H_0) \prod_{i=0}^N \int d\boldsymbol{\psi}_i \pr(\boldsymbol{d}_i|\boldsymbol{\psi}_i,H_0)\pr(\boldsymbol{\psi}_i|\boldsymbol{\eta}).
+\end{equation}
+A by-product of our analysis will then be the inference of the macroparameters describing the population of time-delay lenses.
+
+%say that we're hierarchically inferring the prior.
+%use hyperparameters instead of macroparameters.
+%write down the equivalent of doing the simple average, H0licow-like. That works by multiplying together likelihoods P(d|H_0).
+
+%the quantity constrained by the arc morphology is the radial magnification.
+
+\end{document}
+
+
+
