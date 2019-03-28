@@ -4,7 +4,6 @@
 *.log
 *.aux
 *.pyc
-*.dat
 *.bbl
 *.blg
 *.ps
