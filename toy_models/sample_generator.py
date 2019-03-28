@@ -318,7 +318,7 @@ def simple_reality_sample_knownimf_nocvirscat(nlens=1000, mstar_mu=11.5, mstar_s
     return output
 
 def powerlaw_lenses(nlens=1000, rein_mu=1.5, rein_sig=0.3, gamma_mu=2., gamma_sig=0.16, gamma_err=0.04, dt_err=1., \
-                    min_mag=0.5, h=0.7):
+                    min_mag=0.5, h=0.7, imerr=0.1):
 
     # redshift distribution of lenses: uniform between 0.1 and 0.3 (hardcoded)
     zds = np.random.rand(nlens)*0.2+0.2
@@ -330,6 +330,8 @@ def powerlaw_lenses(nlens=1000, rein_mu=1.5, rein_sig=0.3, gamma_mu=2., gamma_si
     rein = rein_mu + np.random.normal(0., rein_sig, nlens)
     gamma = gamma_mu + np.random.normal(0., gamma_sig, nlens)
     gamma_obs = gamma + np.random.normal(0., gamma_err, nlens)
+
+    imerrs = np.random.normal(0., imerr, (nlens, 2))
 
     hyperpars = {'h': h, 'rein_mu': rein_mu, 'rein_sig': rein_sig, 'gamma_mu': gamma_mu, 'gamma_sig': gamma_sig, \
                  'gamma_err': gamma_err, 'dt_err': dt_err}
@@ -349,10 +351,59 @@ def powerlaw_lenses(nlens=1000, rein_mu=1.5, rein_sig=0.3, gamma_mu=2., gamma_si
         ysource = (np.random.rand(1))**0.5*ymax
 
         lens.source = ysource
-        lens.get_images()
+        lens.get_images(xtol=1e-4)
         lens.get_timedelay()
 
         lens.obs_timedelay = (lens.timedelay + day*np.random.normal(0., dt_err, 1), dt_err*day)
+
+        lens.obs_images = ((lens.images[0] + imerrs[i, 0], lens.images[1] + imerrs[i, 1]), imerr)
+
+        if lens.images is None:
+            df
+
+        lenses.append(lens)
+
+    output['lenses'] = lenses
+
+    return output
+
+def cored_powerlaw_lenses(nlens=1000, rein_mu=1.5, rein_sig=0.3, gamma_mu=2., gamma_sig=0.16, dt_err=1., rc=1e-4, h=0.7, \
+                          imerr=0.1):
+
+    # redshift distribution of lenses: uniform between 0.1 and 0.3 (hardcoded)
+    zds = np.random.rand(nlens)*0.2+0.2
+
+    # redshift distribution of sources: some sort of truncated exponential... (hardcoded)
+    zss = statistics.general_random(lambda z: np.exp(-(np.log(z-0.4))**2), nlens, (0.5, 4.))
+
+    # distribution of Einstein radius: Gaussian
+    rein = rein_mu + np.random.normal(0., rein_sig, nlens)
+
+    gamma = gamma_mu + np.random.normal(0., gamma_sig, nlens)
+
+    imerrs = np.random.normal(0., imerr, (nlens, 2))
+
+    hyperpars = {'h': h, 'rein_mu': rein_mu, 'rein_sig': rein_sig, 'gamma_mu': gamma_mu, 'gamma_sig': gamma_sig, \
+                 'dt_err': dt_err}
+
+    output = {'truth': hyperpars, 'rein_sample': rein, 'gamma_sample': gamma, 'zd_sample': zds, 'zs_sample': zss}
+
+    lenses = []
+    for i in range(nlens):
+        lens = lens_models.cored_powerlaw(zd=zds[i], zs=zss[i], rein=rein[i], gamma=gamma[i], rc=rc)
+
+        lens.get_caustic()
+
+        # source position: uniform distribution in the circle of radius equal to the caustic
+        ysource = (np.random.rand(1))**0.5*lens.caustic
+
+        lens.source = ysource
+        lens.get_images(xtol=1e-8)
+        lens.get_timedelay()
+
+        lens.obs_timedelay = (lens.timedelay + day*np.random.normal(0., dt_err, 1), dt_err*day)
+
+        lens.obs_images = ((lens.images[0] + imerrs[i, 0], lens.images[1] + imerrs[i, 1]), imerr)
 
         if lens.images is None:
             df
