@@ -1,0 +1,38 @@
+2017-7-1
+
+mockA: 'simple reality', 100 lenses, rmrerr=0.020
+
+mockB: nfw halos, mhalo as a function of mstar, rmrerr=0.050
+
+mockC: 'simple reality', 100 lenses, source position limited to 0.5 * radial caustic, rmrerr=0.020
+
+mockD: powerlaw. 100 lenses with image position asymmetry below some value.
+
+mockE: cored powerlaw. 100 lenses with image position asymmetry below some value.
+
+mockF: nfw + deV, rmrerr=0.020, dt_err = 1day, max_asymm = 0.2
+
+mockG: nfw + deV, rmrerr=0.020, dt_err = 1day, max_asymm = 0.5
+
+mockH: powerlaw, rein_mu = 1.5, rein_sig = 0.3, gamma_mu = 2.05, gamma_sig = 0.15, max_asymm = 0.5, dt_err = 1day
+
+mockI: nfw + deV, like mockF but higher mass.
+
+mockJ: broken powerlaw.
+
+mockK: nfw + deV, like mockI but with max_assymm = 0.5
+
+mockL: nfw + deV, max_asymm=0.2, with dynamics, using m200 instead of Delta=93.5
+
+mockM: nfw + deV + gradient, max_asymm=0.2, with dynamics, using m200
+
+mockN: nfw + deV, no scatter in mstar or concentration.
+
+mockO: nfw + deV, max_asymm=0.2. Basically like mockL
+
+mockP: nfw + deV, minimum magnification of inner image of 1
+
+mockQ: nfw + mlgradient, max_asymm=0.2. Basically like mockM.
+
+mockR: nfw + deV, rs=10reff, max_asymm=0.2
+
