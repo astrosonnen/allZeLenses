@@ -4,8 +4,8 @@ import numpy as np
 import pickle
 from scipy.interpolate import splrep, splev
 from sonnentools.cgsconstants import *
-from vdmodel_2013 import sigma_model
-from vdmodel_2013.profiles import deVaucouleurs
+from spherical_jeans import sigma_model
+from spherical_jeans.tracer_profiles import deVaucouleurs
 import ndinterp
 from mass_profiles import gNFW
 
@@ -27,7 +27,7 @@ for i in range(nb):
 
     m3d_grid = norm * gNFW.M3d(r3d_grid, 10., beta_grid[i])
     
-    s2_grid[i] = sigma_model.sigma2general((r3d_grid, m3d_grid), 0.5, lp_pars=1., seeing=None, light_profile=deVaucouleurs)
+    s2_grid[i] = sigma_model.sigma2((r3d_grid, m3d_grid), 0.5, lp_pars=1., seeing=None, light_profile=deVaucouleurs)
 
 s2_grid = G * M_Sun / 10.**10 / kpc * s2_grid
 s2_spline = splrep(beta_grid, s2_grid)

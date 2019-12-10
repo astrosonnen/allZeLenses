@@ -10,15 +10,15 @@ import os
 
 grid_dir = os.environ.get('ATL_GRIDDIR')
 
-f = open(grid_dir+'deV_mlgrad_m2d_grid.dat','r')
+f = open(grid_dir+'deV_mlgrad_m2d_grid.dat', 'rb')
 M2d_grid = pickle.load(f)
 f.close()
 
-f = open(grid_dir+'deV_mlgrad_norm_spline.dat','r')
+f = open(grid_dir+'deV_mlgrad_norm_spline.dat', 'rb')
 norm_spline = pickle.load(f)
 f.close()
 
-f = open(grid_dir+'deV_mlgrad_lenspot_grid.dat','r')
+f = open(grid_dir+'deV_mlgrad_lenspot_grid.dat', 'rb')
 pot_grid = pickle.load(f)
 f.close()
 

@@ -7,8 +7,8 @@ from scipy.integrate import quad
 from scipy.interpolate import splrep, splint
 import os
 from sonnentools.cgsconstants import *
-from vdmodel_2013 import sigma_model
-from vdmodel_2013.profiles import deVaucouleurs
+from spherical_jeans import sigma_model
+from spherical_jeans.tracer_profiles import deVaucouleurs
 import ndinterp
 
 
@@ -66,7 +66,7 @@ pot_grid = np.zeros((nb, nr2d))
 s2_grid = np.zeros(nb)
 
 for i in range(nb):
-    print i
+    print(i)
     rhos = rho(r3d_grid, 1., beta_grid[i])
     rs0 = np.array([0.] + list(r3d_grid))
     mp0 = np.array([0.] + list(4.*np.pi*rhos*r3d_grid**2))
@@ -90,30 +90,30 @@ for i in range(nb):
 
     # now makes the dynamics grid
 
-    s2_grid[i] = sigma_model.sigma2general((r3d_grid, m3d_grid), 0.5, lp_pars=1., seeing=None, light_profile=deVaucouleurs)
+    s2_grid[i] = sigma_model.sigma2((r3d_grid, m3d_grid), 0.5, lp_pars=1., seeing=None, light_profile=deVaucouleurs)
 
 s2_grid = G * M_Sun / 10.**10 / kpc * s2_grid
 s2_spline = splrep(beta_grid, s2_grid)
 
 norm_spline = splrep(beta_grid, norm_grid)
 
-f = open('deV_mlgrad_norm_spline.dat', 'w')
+f = open(grid_dir+'/deV_mlgrad_norm_spline.dat', 'wb')
 pickle.dump(norm_spline, f)
 f.close()
 
-f = open('deV_mlgrad_re2_s2_spline.dat', 'w')
+f = open(grid_dir+'/deV_mlgrad_re2_s2_spline.dat', 'wb')
 pickle.dump(s2_spline, f)
 f.close()
 
 m2d_interp = ndinterp.ndInterp(axes, m2d_grid, order=3)
 
-f = open('deV_mlgrad_m2d_grid.dat', 'w')
+f = open(grid_dir+'/deV_mlgrad_m2d_grid.dat', 'wb')
 pickle.dump(m2d_interp,f)
 f.close()
 
 pot_interp = ndinterp.ndInterp(axes, pot_grid, order=3)
 
-f = open('deV_mlgrad_lenspot_grid.dat', 'w')
+f = open(grid_dir+'/deV_mlgrad_lenspot_grid.dat', 'wb')
 pickle.dump(pot_interp,f)
 f.close()
 

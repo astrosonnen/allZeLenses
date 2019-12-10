@@ -1130,7 +1130,7 @@ class sps_ein_break: #spherical power-law with a break at the Einstein radius
         return self.const()/(3.-self.gamma)*((3.-self.gamma)*(2.-self.gamma)*2.**self.beta + 2.*(3.-self.gamma)*self.beta*2.**(self.beta-1.) + self.beta*(self.beta-1.)*2.**(self.beta-2.))
 
     def psi3(self):
-	return self.const()/self.rein/(3.-self.gamma)*((3.-self.gamma)*(2.-self.gamma)*(1.-self.gamma)*2.**self.beta + 3.*self.beta*(3.-self.gamma)*(2.-self.gamma)*2.**(self.beta-1.) + 3.*self.beta*(self.beta-1.)*(3.-self.gamma)*2.**(self.beta-2.) + self.beta*(self.beta-1.)*(self.beta-2.)*2.**(self.beta-3.))
+        return self.const()/self.rein/(3.-self.gamma)*((3.-self.gamma)*(2.-self.gamma)*(1.-self.gamma)*2.**self.beta + 3.*self.beta*(3.-self.gamma)*(2.-self.gamma)*2.**(self.beta-1.) + 3.*self.beta*(self.beta-1.)*(3.-self.gamma)*2.**(self.beta-2.) + self.beta*(self.beta-1.)*(self.beta-2.)*2.**(self.beta-3.))
 
 class broken_alpha_powerlaw: #spherical power-law with a break at the Einstein radius
 

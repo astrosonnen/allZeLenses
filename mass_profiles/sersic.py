@@ -69,7 +69,7 @@ def make_M2d_grid(Nr=100,Nn=15,Rmin=0.01,Rmax=10.):
     #this code calculates the quantity M2d(R,rs=rsgrid,beta)*R**(3-beta) on a grid of values of R between Rmin and Rmax, and values of the inner slope beta between 0.1 and 2.8.
     #the reason for the multiplication by R**(3-beta) is to make interpolation easier by having a function as flat as possible.
 
-    print 'calculating grid of enclosed projected masses...'
+    print('calculating grid of enclosed projected masses...')
     import ndinterp
     reins = np.logspace(np.log10(Rmin),np.log10(Rmax),Nr)
     spl_rein = splrep(reins,np.arange(Nr))
@@ -81,11 +81,11 @@ def make_M2d_grid(Nr=100,Nn=15,Rmin=0.01,Rmax=10.):
     M2d_grid = np.empty((Nn,Nr))
     
     for i in range(0,Nn):
-        print 'sersic index %4.2f'%ns[i]
+        print('sersic index %4.2f'%ns[i])
         for j in range(0,Nr):
             M2d_grid[i,j] = M2d(reins[j],ns[i],1.)
     thing = ndinterp.ndInterp(axes,M2d_grid,order=3)
-    f = open('sersic_M2d_grid.dat','w')
+    f = open(grid_dir+'/sersic_M2d_grid.dat','wb')
     pickle.dump(thing,f)
     f.close()
 
@@ -93,7 +93,7 @@ def make_lenspot_grid(Nr=100,Nn=15,Rmin=0.01,Rmax=10.):
     #this code calculates the psi(R,rs=rsgrid,beta)*R**(3-beta) on a grid of values of R between Rmin and Rmax, and values of the inner slope beta between 0.1 and 2.8.
     #the reason for the multiplication by R**(3-beta) is to make interpolation easier by having a function as flat as possible.
 
-    print 'calculating grid of lensing potential...'
+    print('calculating grid of lensing potential...')
     import ndinterp
     reins = np.logspace(np.log10(Rmin),np.log10(Rmax),Nr)
     spl_rein = splrep(reins,np.arange(Nr))
@@ -105,11 +105,11 @@ def make_lenspot_grid(Nr=100,Nn=15,Rmin=0.01,Rmax=10.):
     pot_grid = np.empty((Nn,Nr))
     
     for i in range(0,Nn):
-        print 'sersic index %4.2f'%ns[i]
+        print('sersic index %4.2f'%ns[i])
         for j in range(0,Nr):
             pot_grid[i,j] = lenspot(reins[j],ns[i],1.)
     thing = ndinterp.ndInterp(axes,pot_grid,order=3)
-    f = open('sersic_lenspot_grid.dat','w')
+    f = open(grid_dir+'/sersic_lenspot_grid.dat','wb')
     pickle.dump(thing,f)
     f.close()
 
@@ -118,7 +118,6 @@ def make_M3d_grid():
     import ndinterp
     pass
 
-
 if not os.path.isfile(grid_dir+'sersic_M2d_grid.dat'):
     make_M2d_grid()
 
@@ -126,11 +125,11 @@ if not os.path.isfile(grid_dir+'sersic_lenspot_grid.dat'):
     make_lenspot_grid()
 
 
-f = open(grid_dir+'sersic_M2d_grid.dat','r')
+f = open(grid_dir+'sersic_M2d_grid.dat','rb')
 M2d_grid = pickle.load(f)
 f.close()
 
-f = open(grid_dir+'sersic_lenspot_grid.dat','r')
+f = open(grid_dir+'sersic_lenspot_grid.dat','rb')
 pot_grid = pickle.load(f)
 f.close()
 
