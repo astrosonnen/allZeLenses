@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 import pylab
+import h5py
 
 
 # In all H0licow lenses studied so far, the H0 inferred with powerlaw is always very close to that inferred with the composite model. Why is that?
@@ -10,9 +11,9 @@ import pylab
 # In this code, I assume the truth to be composite. I take lenses from the existing mocks, then select the ones for which a power-law model gives the same H0 (based on the relation between psi'' and psi''').
 # Then I modify lens and source redshift in order to get a different Einstein radius. Is the power-law approximation still valid?
 
-mockname = 'mockP'
+mockname = 'mockO2019'
 
-f = open('../paper/%s.dat'%mockname, 'r')
+f = open('../paper/%s.dat'%mockname, 'rb')
 mock = pickle.load(f)
 f.close()
 
@@ -29,7 +30,7 @@ fit_file = h5py.File('../paper/%s_powerlaw_perfectobs_lensing.hdf5'%mockname, 'r
 eps = 1e-4
 
 for i in range(nlens):
-    print i
+    print(i)
     lens = mock['lenses'][i]
     psi1_mock[i] = lens.rein
     psi2_mock[i] = (lens.alpha(lens.rein + eps) - lens.alpha(lens.rein - eps))/(2.*eps)
@@ -47,7 +48,7 @@ gamma_fit = fit_file['gamma'].value.copy()
 psi2_inferred = fit_file['psi2'].value.copy()
 
 good = (gamma_fit > 1.5) & (gamma_fit < 2.5) & (psi1_mock > 0.5)
-print psi2_diff[good].min()
 
 pylab.scatter(psi2_inferred[good] - psi2_mock[good], ind_H0[good], color='b')
+pylab.show()
 

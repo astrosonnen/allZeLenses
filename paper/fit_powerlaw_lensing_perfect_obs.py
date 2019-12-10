@@ -8,9 +8,9 @@ from sonnentools.cgsconstants import *
 from scipy.optimize import brentq
 
 
-mockname = 'mockP'
+mockname = 'mockO2019'
 
-f = open('%s.dat'%mockname, 'r')
+f = open('%s.dat'%mockname, 'rb')
 mock = pickle.load(f)
 f.close()
 
@@ -79,7 +79,7 @@ for i in range(nlens):
     gamma_fit[i] = gamma_ml
     rmur_fit[i] = model_lens.radmag_ratio
 
-    print '%d %3.2f %3.2f %3.2f %f'%(i, gamma_ml, rmur_model(gamma_ml) - radmagrat, rmur_model(gamma_ml) - model_lens.radmag_ratio, radmagrat)
+    print('%d %3.2f %3.2f %3.2f %f'%(i, gamma_ml, rmur_model(gamma_ml) - radmagrat, rmur_model(gamma_ml) - model_lens.radmag_ratio, radmagrat))
 
 fit_file = h5py.File('%s_powerlaw_perfectobs_lensing.hdf5'%mockname, 'w')
 fit_file.create_dataset('psi1', data=psi1_fit)

@@ -3,11 +3,14 @@ import numpy as np
 from allZeTools import statistics
 import pickle
 from sonnentools.cgsconstants import *
-from scipy.interpolate import splev
+from scipy.interpolate import splrep, splev
 from scipy.stats import truncnorm
+from spherical_jeans import sigma_model
+from spherical_jeans.tracer_profiles import deVaucouleurs
+from spherical_jeans.mass_profiles import nfw, sersic
 
 
-mockname = 'mockO'
+mockname = 'mockO2019'
 
 day = 24.*3600.
 
@@ -42,13 +45,20 @@ max_asymm = 0.2
 
 h=0.7
 
-f = open('/gdrive/projects/cs82_weaklensing/PyBaWL/nfw_re2_s2_grid.dat', 'r')
-nfw_re2_s2_spline = pickle.load(f)
-f.close()
+ngrid = 31
+rs2reff_grid = np.logspace(-1., 2., ngrid)
+nfw_s2_grid = 0.*rs2reff_grid
+nr = 1001
+r_grid = np.logspace(-3., 3., nr)
+for i in range(ngrid):
+    norm = 1./nfw.M3d(1., rs2reff_grid[i])
+    s2_here = sigma_model.sigma2((r_grid, norm*nfw.M3d(r_grid, rs2reff_grid[i])), 0.5, 1., light_profile=deVaucouleurs)
+    nfw_s2_grid[i] = s2_here * G * M_Sun / kpc / 1e10
 
-f = open('/gdrive/projects/cs82_weaklensing/PyBaWL/deV_re2_s2.dat', 'r')
-deV_re2_s2 = pickle.load(f)
-f.close()
+nfw_re2_s2_spline = splrep(rs2reff_grid, nfw_s2_grid)
+
+deV_M3d_spline = sersic.get_m3d_spline(4., 1.)
+deV_re2_s2 = sigma_model.sigma2((r_grid, splev(r_grid, deV_M3d_spline)), 0.5, 1., deVaucouleurs) * G * M_Sun / kpc / 1e10
 
 # redshift distribution of lenses: uniform between 0.1 and 0.3 (hardcoded)
 zds = np.random.rand(nlens)*0.2+0.2
@@ -146,7 +156,7 @@ output['sigma_err'] = sigma_err
 
 output['lenses'] = lenses
 
-f = open('%s.dat'%mockname, 'w')
+f = open('%s.dat'%mockname, 'wb')
 pickle.dump(output, f)
 f.close()
 
