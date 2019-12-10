@@ -97,7 +97,7 @@ def make_M2dRbetam3_grid(Nr=100,Nb=28,Rmin=0.1,Rmax=100.):
         for j in range(0,Nr):
             M2d_grid[i,j] = M2d(reins[j],rsgrid,betas[i])
     thing = ndinterp.ndInterp(axes,M2d_grid*R**(B-3.),order=3)
-    f = open(grid_dir+'/gNFW_rs%d_M2d_grid.dat'%int(rsgrid),'wb')
+    f = open(grid_dir+'/gNFW_rs%d_M2dRbetam3_grid.dat'%int(rsgrid),'wb')
     pickle.dump(thing,f)
     f.close()
 
